@@ -1,0 +1,46 @@
+{
+	"name": "@kadajett/engineering",
+	"version": "0.2.0",
+	"private": true,
+	"description": "My code quality metrics, linters, and codegraph settings for upstream-generated projects and Workers",
+	"license": "MIT",
+	"author": "Kadajett",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/Kadajett/engineering.git"
+	},
+	"homepage": "https://github.com/Kadajett/engineering#readme",
+	"bugs": {
+		"url": "https://github.com/Kadajett/engineering/issues"
+	},
+	"type": "module",
+	"bin": {
+		"engineering": "bin/engineering.mjs"
+	},
+	"files": [
+		"bin",
+		"src",
+		"configs",
+		"README.md",
+		"CATALOG.md",
+		"LICENSE"
+	],
+	"engines": {
+		"node": ">=22.12.0"
+	},
+	"scripts": {
+		"format": "biome format --write bin src test tools configs package.json biome.json",
+		"format:check": "biome format bin src test tools configs package.json biome.json",
+		"check": "npm run format:check && node tools/self-check.mjs && npm test",
+		"test": "node --test test/*.test.mjs"
+	},
+	"dependencies": {
+		"@biomejs/biome": "2.5.12",
+		"oxlint": "1.55.0",
+		"typescript": "5.9.3",
+		"zod": "4.3.6"
+	},
+	"devDependencies": {
+		"typescript-native": "npm:typescript@7.0.2"
+	}
+}
