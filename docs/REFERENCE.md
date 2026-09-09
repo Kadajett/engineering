@@ -47,6 +47,62 @@ You can repeat `--skills-dir` and point it at either a flat skill collection or 
 
 Generated agent instructions explain when to load matching skills and refresh them after dependency changes. The links make guidance discoverable; they don't guarantee an agent will load it or follow every instruction.
 
+### Optional skill recommendations
+
+`engineering recommend [directory]` suggests curated extras without installing skills, writing project files, adopting the project, querying a service, or executing skill content.
+
+```bash
+engineering recommend .
+engineering recommend ./apps/api --profile hono-node
+engineering recommend . --include-installed
+engineering recommend . --catalog ~/favorites.json --json
+```
+
+The built-in catalog is separate from automatic selection: six optional Matt Pocock workflows (research, domain-modeling, prototype, grilling, writing-for-agents, code-review), TypeScript guidance, Apollo's Rust best practices, pytest, and Clerk testing/webhooks. Sources link to inspected `SKILL.md` files at immutable revisions. Descriptions call out opinionated conventions or setup requirements; particularly, code-review's upstream issue-tracker integration must respect Beads rather than introduce another tracker.
+
+By default, results exclude both the project's automatic selections and skills already available in native project directories, user collections, or registered Claude plugins. `--include-installed` reveals the latter with an availability label; it still excludes automatic defaults. Availability means a readable, correctly named skill entry point, not verification that every agent can use every ancillary resource. Dangling links and malformed entry points do not count as installed.
+
+#### Curating your favorites
+
+Catalogs overlay in this order:
+
+1. Built-in optional recommendations.
+2. `${XDG_CONFIG_HOME:-$HOME/.config}/kadajett-engineering/recommendations.json`.
+3. The target project's `.engineering/recommendations.json`.
+4. An explicit `--catalog FILE`, resolved from the command's working directory.
+
+A later record replaces an earlier record with the same name. `disabled` names accumulate across catalogs and always win. Missing optional files are fine; missing explicit files, malformed catalogs, duplicate names within one file, and unknown keys fail with an error identifying the file. Files are never created or rewritten by this command.
+
+For example, this catalog customizes one general favorite and one language-specific favorite:
+
+```json
+{
+  "version": 1,
+  "recommendations": [
+    {
+      "name": "prototype",
+      "description": "Try a focused experiment before committing to a design.",
+      "source": "https://github.com/mattpocock/skills/blob/3cca18b368ae95cdbdebbff572ccafa662551015/skills/engineering/prototype/SKILL.md"
+    },
+    {
+      "name": "typescript",
+      "description": "Review strict TypeScript patterns against this project's conventions.",
+      "source": "https://github.com/Gentleman-Programming/Gentleman-Skills/blob/c8036a37893679dc5e942484975405d39689c63b/curated/typescript/SKILL.md",
+      "when": { "languages": ["typescript"] }
+    }
+  ],
+  "disabled": ["code-review"]
+}
+```
+
+Add any other reviewed skill using the same record shape. Names must be lowercase kebab-case, and sources must be HTTPS links to `SKILL.md` without embedded credentials. Pinned GitHub links also let discovery recognize nested plugin repository paths. Other source URLs use conventional name-based local discovery. Custom catalogs are your curation, not automatically verified endorsements.
+
+Omit `when` for a general recommendation. Otherwise provide one or more nonempty arrays: `languages`, `packages`, `profiles`. Values within an array are alternatives; every specified dimension must match. For example, `"when": {"languages": ["typescript"], "packages": ["hono", "express"]}` requires TypeScript and either Hono or Express. Matching is exact and case-sensitive.
+
+Languages come from source filenames and conventional root manifests, not guesses from profile names. Supported signals include JavaScript, TypeScript, Python, Rust, Go, C/C++, JVM languages, .NET, Ruby, PHP, Swift, and others; use lowercase identifiers such as `typescript`, `python`, `rust`, `cpp`, and `csharp`. Dependencies, generated/build/cache directories, agent skill trees, and symlinked trees are excluded. Vue/Svelte filenames signal `vue`/`svelte`; embedded script languages are not parsed. Package matches use only direct dependency/dev/optional/peer names in the target's `package.json`, not transitive or child-workspace dependencies. Run against the relevant workspace directory.
+
+Profile precedence is explicit `--profile`, `.engineering/skills.json`, `.engineering/state.json`, then `generic`. A non-JavaScript project needs no `package.json`. JSON output includes the detected context, loaded catalog paths, match reasons, source links, and local availability for each result.
+
 ### Observability and AI reference guidance
 
 Skills aren't the only useful source. The managed `AGENTS.md` section also includes a relevant checklist and official links for Workers logging/tracing, AI usage and streaming, Agents production behavior, and version-matched AI SDK telemetry. `CLAUDE.md` points to that section. These references are labeled separately from installed skills and recorded under `guidance` in `.engineering/skills.json`; dry-run plans show them too.

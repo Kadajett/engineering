@@ -83,6 +83,20 @@ You can also run `engineering skills .` in an existing project, even one without
 
 Generated agent instructions explain when to load skills, but making them available isn't a guarantee that every agent will follow them.
 
+### Recommend extras without installing them
+
+```bash
+engineering recommend .                     # general and matching optional skills
+engineering recommend . --include-installed # also show favorites you already have
+engineering recommend . --catalog ~/favorites.json --json
+```
+
+Recommendations are separate from the automatic installs. The initial selection includes optional planning/research skills, TypeScript, Rust and pytest guidance, and Clerk testing/webhooks. Every suggestion explains its match and links to a reviewed, pinned source.
+
+Keep your own favorites in `${XDG_CONFIG_HOME:-$HOME/.config}/kadajett-engineering/recommendations.json` for all projects, or `.engineering/recommendations.json` for one project. You can add skills, override descriptions and matching rules, or disable suggestions. A record without matching rules is general; others match languages, direct packages, or project profiles. See the [catalog format and precedence](docs/REFERENCE.md#optional-skill-recommendations).
+
+The command works without adopting a project, runs offline, and changes no files. It excludes automatic defaults and skills already available in project/user collections unless you request the latter. Review each source before choosing to install it; recommendations never run a skill's setup or replace your existing tooling.
+
 ### AI Workers: logging, tokens, and production guidance
 
 Workers projects also get a short observability checklist and official reference links in their agent instructions. AI Workers and Agents projects get more: token accounting, streaming and cancellation, tool safety, durable execution, and privacy-aware tracing. The guidance checks which stack you use instead of assuming every AI app has the same APIs.

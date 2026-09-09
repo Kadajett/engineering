@@ -10,6 +10,7 @@ import { getProfile, profiles, requireProfileRuntime } from "./profiles.mjs";
 import { chooseBaseline } from "./baseline-choice.mjs";
 import { Stages } from "./stages.mjs";
 import { setupSkills } from "./skills.mjs";
+import { showRecommendations } from "./skills/recommend.mjs";
 
 function showProfiles() {
 	for (const profile of profiles) {
@@ -152,6 +153,7 @@ async function dispatch(command, targets, options) {
 	const root = singleTarget(command, targets);
 	if (command === "adopt") return adopt(root, getProfile(options.profile ?? "generic"), options);
 	if (command === "skills") return setupSkills(root, options.profile, options);
+	if (command === "recommend") return showRecommendations(root, options);
 	if (["check", "baseline", "prune"].includes(command))
 		return qualityCommand(command, root, options);
 	throw new Error(`Unknown command: ${command}`);

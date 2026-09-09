@@ -17,9 +17,20 @@ function validateSkillOptions(options, command) {
 		throw new Error("--skills-dir requires a nonempty directory");
 }
 
+function validateRecommendationOptions(options, command) {
+	if (
+		(options.catalog !== undefined || options.json || options.includeInstalled) &&
+		command !== "recommend"
+	)
+		throw new Error("--catalog, --json and --include-installed are supported only for recommend");
+	if (options.catalog !== undefined && !options.catalog.trim())
+		throw new Error("--catalog requires a nonempty file path");
+}
+
 function validateOptions(options, command) {
 	validateBaseline(options);
 	validateSkillOptions(options, command);
+	validateRecommendationOptions(options, command);
 	if (options.open && options.open !== "vscode") throw new Error("--open supports vscode");
 	if (options.name !== undefined && !options.name.trim())
 		throw new Error("--name requires a nonempty application name");
@@ -53,6 +64,9 @@ export function parseOptions(args) {
 			"no-ci": { type: "boolean" },
 			"no-skills": { type: "boolean" },
 			"skills-dir": { type: "string", multiple: true },
+			catalog: { type: "string" },
+			json: { type: "boolean" },
+			"include-installed": { type: "boolean" },
 			"allow-deprecated": { type: "boolean" },
 			"dry-run": { type: "boolean" },
 		},
@@ -67,6 +81,7 @@ export function parseOptions(args) {
 		skills: !values["no-skills"],
 		skillsDirs: values["skills-dir"] ?? [],
 		allowDeprecated: Boolean(values["allow-deprecated"]),
+		includeInstalled: Boolean(values["include-installed"]),
 		dryRun: Boolean(values["dry-run"]),
 		noBaseline: Boolean(values["no-baseline"]),
 	};
@@ -74,8 +89,7 @@ export function parseOptions(args) {
 	return { command: positionals[0] ?? "help", targets: positionals.slice(1), options };
 }
 
-export function usage() {
-	return `engineering — your usual tools, ready in the next project
+const help = `engineering — your usual tools, ready in the next project
 
 Commands:
   list                                      Browse the available project types
@@ -83,6 +97,7 @@ Commands:
   adopt [directory] --profile generic        Add your tools to an existing project
   plan [profile] [name]                      Preview creation without making changes
   skills [directory]                        Set up or restore the project's skills
+  recommend [directory]                     Suggest optional skills without installing
   check [directory]                         Check the code without changing it
   baseline [directory] --accept --reason X   Remember approved existing issues
   prune [directory]                         Remove allowances for issues you've fixed
@@ -100,6 +115,12 @@ Create/adopt options:
   --skills-dir PATH      Reuse another local skill collection (repeatable)
   --allow-deprecated     Allow a legacy Create React App project
   --dry-run              Show the plan without changing files or opening an editor
+
+Recommendation options:
+  --catalog FILE         Overlay a curated favorites catalog
+  --include-installed    Also show matching favorites already available locally
+  --json                 Print the recommendation report as JSON
+  --profile PROFILE      Supply project context when no stored profile exists
 
 Start: engineering create
 Or:    engineering create react-vite MyApp
@@ -122,4 +143,7 @@ Shared engineering skills and matching library guidance are set up for you.
 Arguments after -- go to the upstream generator, apart from conflicting safety flags.
 Your framework keeps its own application structure and tooling.
 `;
+
+export function usage() {
+	return help;
 }
