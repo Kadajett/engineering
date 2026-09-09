@@ -123,10 +123,6 @@ Profile `resources` entries are **guidance**, not a claim that the wrapper provi
 | [Workers AI](https://developers.cloudflare.com/workers-ai/) | Hosted inference | Configure AI binding/model, review access and usage charges; local dev inference is not offline. |
 | [AI Gateway](https://developers.cloudflare.com/ai-gateway/) | Optional AI request gateway | Explicit gateway setup/configuration; not implied by selecting Workers AI. |
 
-### What could “R1” mean?
-
-There is no `R1` resource in the official Workers bindings catalog above, so this wrapper invents neither an R1 bucket nor an R1 preset. If object storage was intended, the Cloudflare product is **R2**. If an AI reasoning model was intended, Workers AI lists [DeepSeek-R1-Distill-Qwen-32B](https://developers.cloudflare.com/workers-ai/models/deepseek-r1-distill-qwen-32b/) with model ID `@cf/deepseek-ai/deepseek-r1-distill-qwen-32b`. That is a model selected through a Workers AI binding, not a separately provisioned “R1” database or storage service. Model availability, terms, and pricing remain upstream.
-
 ## Custom upstream generator escape hatch
 
 When the catalog is not the right selection, supply a trusted generator package explicitly. This uses the same adoption layer without adding a local framework template:
