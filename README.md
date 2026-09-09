@@ -60,6 +60,7 @@ Skills are on by default—there's no extra setup command to remember. Every pro
 
 - **Cloudflare Workers:** official Cloudflare, Wrangler, and Workers best practices.
 - **Cloudflare Agents SDK:** Agents SDK and Durable Objects guidance.
+- **AI SDK / AI chat:** the official `ai-sdk` skill, selected from `ai`, `workers-ai-provider`, or `@cloudflare/ai-chat`.
 - **Web React / Next.js:** Vercel's React and Next.js best practices.
 - **OpenTUI:** the official OpenTUI skill, including Core, React, and Solid renderers. Terminal React alone doesn't pull in browser-focused React guidance.
 - **Hono, TanStack Start / Router, Clerk:** matching upstream skills and any companion skills they need.
@@ -77,6 +78,14 @@ npm run engineering:skills
 You can also run `engineering skills .` in an existing project, even one without the engineering package. It adds skills without adopting the project or changing its baseline. Use `--skills-dir ~/my-skills` to reuse another collection.
 
 Generated agent instructions explain when to load skills, but making them available isn't a guarantee that every agent will follow them.
+
+### AI Workers: logging, tokens, and production guidance
+
+Workers projects also get a short observability checklist and official reference links in their agent instructions. AI Workers and Agents projects get more: token accounting, streaming and cancellation, tool safety, durable execution, and privacy-aware tracing. The guidance checks which stack you use instead of assuming every AI app has the same APIs.
+
+Start with native Cloudflare logs and traces. AI Gateway remains a choice, and Sentry-specific docs are added only when `@sentry/cloudflare` is a dependency. Setup doesn't install monitoring SDKs, change sampling, or start recording prompts. The [AI Workers guide](docs/AI-WORKERS.md) explains the recommendations, version traps, and sources.
+
+For an older native `env.AI` project without a stored profile, run `engineering skills . --profile workers-ai`. This refreshes guidance without adopting the app or changing its baseline.
 
 ## Bring an existing project
 
@@ -107,6 +116,7 @@ You can adjust the scope and limits in `.engineering/config.json`. A project's a
 
 - [Generator catalog](CATALOG.md): supported frameworks, upstream commands, and Cloudflare resources.
 - [CLI and quality reference](docs/REFERENCE.md): skills, baselines, checks, caching, and CI.
+- [AI Workers guide](docs/AI-WORKERS.md): observability, token usage, privacy, and production practices without requiring Sentry.
 - [MIT license](LICENSE).
 
 To work on "engineering" itself, install Lizard 1.24.0 and run `npm ci && npm run check`. Some checks need native tools or package registry access. The package checks its own source without a baseline.

@@ -121,7 +121,8 @@ function verifyRepository(entry, selection) {
 		throw new Error(`Skill cache revision mismatch: ${entry}`);
 	git(directory, ["fsck", "--full", "--no-reflogs"]);
 	safeParents(source);
-	validateTree(source);
+	// Keep unrelated, contained dangling links byte-for-byte; selected skills remain strict.
+	validateTree(source, source, true);
 	const records = git(directory, ["ls-tree", "-rz", "--full-tree", selection.revision])
 		.split("\0")
 		.filter(Boolean);

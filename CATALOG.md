@@ -115,6 +115,8 @@ The upstream README describes a quick start that starts a development server, bu
 
 ## Cloudflare: code generation is not provisioning
 
+All Workers profiles bring in native logging and tracing guidance. Workers AI and Agents projects also get relevant token-usage, streaming, privacy, and production references. This doesn't choose a monitoring vendor or configure telemetry: Sentry docs require `@sentry/cloudflare`, and AI Gateway stays optional. See the [AI Workers guide](docs/AI-WORKERS.md).
+
 C3 **2.72.6** supports `--no-deploy`, `--no-open`, and `--no-git`; the [official CLI reference](https://developers.cloudflare.com/pages/get-started/c3/) also documents these negated boolean options. All three built-in C3 profiles include them, and forwarded arguments can't turn deployment or browser opening back on.
 
 C3 can still ask questions and install dependencies. With `cloudflare` and `cloudflare-workers`, pass remaining choices such as `-- --lang ts`. Use `cloudflare` when you want to pick a category, framework, or template yourself. The `workers-ai` profile keeps a fixed template, so it rejects overrides for category, type, template, framework, defaults, language, and other configuration choices, including aliases and dotted forms. For example, `--accept-defaults` can select a different starter and isn't accepted for that profile.

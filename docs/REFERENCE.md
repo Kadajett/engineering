@@ -12,6 +12,8 @@ This is the detailed guide to what "engineering" adds, how its checks work, and 
 | --- | --- |
 | Workers profile, Wrangler, Workers types, or Cloudflare Vite plugin | Cloudflare, Wrangler, Workers best practices |
 | Cloudflare `agents` package | Agents SDK and Durable Objects, in addition to Workers guidance |
+| `@cloudflare/ai-chat` | Cloudflare, Agents SDK, Durable Objects, and AI SDK guidance |
+| `ai` or `workers-ai-provider` | Official AI SDK skill; the Workers provider also selects Cloudflare skills |
 | Web React or Next.js | Vercel React/Next best practices |
 | OpenTUI Core, React, or Solid packages | Official OpenTUI skill |
 | Hono packages | Official Hono skill |
@@ -28,6 +30,8 @@ A valid skill already in the project takes precedence. Otherwise, the installer 
 
 The cache keeps the full upstream repository so linked references remain available, and checks its contents against the pinned Git tree. Fetching a skill doesn't execute repository code or install scripts, enable plugins or MCP servers, or call a model.
 
+Git repositories sometimes contain broken links unrelated to a skill. The cache preserves unrelated, contained dangling relative links without rewriting their bytes. The selected skill and any symlinked references it uses must still resolve; links escaping the repository and unresolved parent traversals are rejected.
+
 Project links go in `.agents/skills`, `.claude/skills`, `.pi/skills`, and `.omp/skills` for shared/Codex, Claude, Pi, and OMP discovery. Other agents that support `.agents/skills` can use it too. Existing directories are kept. Conflicting or dangling links need to be repaired before installation can continue; the installer also refuses destination parent directories that are symlinks.
 
 Only the machine-local symlinks are ignored by Git. Commit `.engineering/skills.json`: it records fallback sources and revisions without absolute machine paths, so another developer can restore the skills. Your existing project and local skills remain yours to edit; their contents may differ from the pinned fallback. Refreshing skills keeps any fallback revisions already recorded.
@@ -42,6 +46,16 @@ engineering create workers-ai my-worker --no-skills
 You can repeat `--skills-dir` and point it at either a flat skill collection or an upstream repository root. `engineering skills` works without re-adopting the project, changing its quality baseline, or upgrading the installed engineering package.
 
 Generated agent instructions explain when to load matching skills and refresh them after dependency changes. The links make guidance discoverable; they don't guarantee an agent will load it or follow every instruction.
+
+### Observability and AI reference guidance
+
+Skills aren't the only useful source. The managed `AGENTS.md` section also includes a relevant checklist and official links for Workers logging/tracing, AI usage and streaming, Agents production behavior, and version-matched AI SDK telemetry. `CLAUDE.md` points to that section. These references are labeled separately from installed skills and recorded under `guidance` in `.engineering/skills.json`; dry-run plans show them too.
+
+Workers AI and Agents don't imply Sentry. Its Cloudflare docs are selected only for an actual `@sentry/cloudflare` dependency. The maintained Sentry instrumentation workflow is not installed automatically. AI Gateway is optional, and no telemetry SDK, export, sampling, payload-capture, or Wrangler setting is changed by guidance setup.
+
+Selection follows dependency fields and the selected/stored profile, not source scanning or Wrangler parsing. Use `engineering skills . --profile workers-ai` for a native AI-binding app without a useful stored profile or AI package signal. Run the command again after dependency changes to refresh the generated reference sections. `--no-skills` skips skills and reference setup without removing existing files.
+
+The [AI Workers guide](AI-WORKERS.md) explains the exact signals and sources. It calls out missing versus zero usage, sampled traces versus billing, AI SDK major-version differences, stream completion/cancellation, and content-collection defaults. Official links remain live; installed types and version-matched docs take precedence over newer online examples.
 
 ## One project selection
 
@@ -132,7 +146,7 @@ Each stage reports its duration and result, followed by total elapsed time. Para
 - `.engineering/config.json`: versioned settings for source scope, exclusions, strict TypeScript projects, limits, and direct import boundaries. Change the configuration rather than copying checker code.
 - `.engineering/baseline.json`: an optional record of the existing issues you approved.
 - `.engineering/state.json`: the profile, generator command, package manager, installation fingerprint, engineering version, and last completed phase.
-- `.engineering/vendor/kadajett-engineering-0.4.0.tgz`: the engineering package as a portable devDependency archive. Commit it with the manifest and lockfile. Managed `.gitignore` exceptions allow it even if the starter ignores `*.tgz`, so CI and other machines can install it without this checkout.
+- `.engineering/vendor/kadajett-engineering-0.5.0.tgz`: the engineering package as a portable devDependency archive. Commit it with the manifest and lockfile. Managed `.gitignore` exceptions allow it even if the starter ignores `*.tgz`, so CI and other machines can install it without this checkout.
 - Managed sections in `AGENTS.md` and `CLAUDE.md`, alongside any unrelated instructions already there.
 - `.github/workflows/engineering.yml`: locked dependency installation, the same preparation and native checks, then engineering checks. Existing framework workflows remain. Use `--no-ci` if you don't want a GitHub Actions workflow.
 - Optional Beads database and agent hooks, plus Graphify skills, hooks, and a code graph. Every project has its own state. Beads initialization may create a metadata commit; "engineering" doesn't configure a Git remote.

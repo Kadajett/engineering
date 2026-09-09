@@ -1,4 +1,4 @@
-import { lstatSync, mkdirSync, readdirSync, realpathSync } from "node:fs";
+import { lstatSync, mkdirSync, readdirSync, readlinkSync, realpathSync } from "node:fs";
 import { dirname, isAbsolute, join, parse, relative, resolve, sep } from "node:path";
 import { readRegularFile } from "../archive-inputs.mjs";
 
@@ -63,21 +63,36 @@ export function privateDirectory(path) {
 		throw new Error(`Skill cache must be private and owned by the current user: ${path}`);
 }
 
-function visitTree(root, path, seen) {
-	const actual = realpathSync(path);
+function treeTarget(root, path, allowDangling) {
+	try {
+		return realpathSync(path);
+	} catch (error) {
+		if (!allowDangling || error.code !== "ENOENT" || !stat(path)?.isSymbolicLink()) throw error;
+		const target = readlinkSync(path);
+		assertContained(root, resolve(dirname(path), target));
+		// An unresolved parent traversal cannot be proven safe through symlinked ancestors.
+		if (isAbsolute(target) || target.split(/[\\/]/).includes("..")) throw error;
+		return undefined;
+	}
+}
+
+function visitTree(root, path, seen, allowDangling) {
+	const actual = treeTarget(root, path, allowDangling);
+	if (actual === undefined) return;
 	assertContained(root, actual);
 	if (seen.has(actual)) return;
 	seen.add(actual);
 	const entry = stat(actual);
 	if (entry.isDirectory()) {
-		for (const name of readdirSync(actual)) visitTree(root, join(actual, name), seen);
+		for (const name of readdirSync(actual))
+			visitTree(root, join(actual, name), seen, allowDangling);
 	} else if (!entry.isFile()) {
 		throw new Error(`Refusing non-file skill content: ${path}`);
 	}
 }
 
-export function validateTree(root, path = root) {
-	visitTree(realpathSync(root), path, new Set());
+export function validateTree(root, path = root, allowDangling = false) {
+	visitTree(realpathSync(root), path, new Set(), allowDangling);
 }
 
 export function validateSkill(path, name, boundary = path) {

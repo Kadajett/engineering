@@ -2,8 +2,9 @@ import { realpathSync } from "node:fs";
 import { resolve } from "node:path";
 import { managedBlock, save, saveJson, text } from "./files.mjs";
 import { appendIgnores } from "./integrations.mjs";
-import { selectSkills, unmatchedPackages } from "./skills/catalog.mjs";
+import { directPackages, selectSkills, unmatchedPackages } from "./skills/catalog.mjs";
 import { installSkills } from "./skills/install.mjs";
+import { guidanceInstructions, selectGuidance } from "./skills/guidance.mjs";
 
 const manifestPath = ".engineering/skills.json";
 
@@ -38,9 +39,11 @@ export function skillPlan(root, profile) {
 		stored.profile ??
 		JSON.parse(text(root, ".engineering/state.json") || "{}").profile ??
 		"generic";
+	const skills = pinnedSelection(manifest, selectedProfile, stored);
 	return {
 		profile: selectedProfile,
-		skills: pinnedSelection(manifest, selectedProfile, stored),
+		skills,
+		guidance: selectGuidance(directPackages(manifest), selectedProfile, skills),
 		unmatchedPackages: unmatchedPackages(manifest),
 	};
 }
@@ -56,7 +59,7 @@ These skills were picked for this project: ${names}.
 - .engineering/skills.json records the upstream sources and fallback versions. Skills reused from your own installation stay yours; setup doesn't upgrade them.
 - Follow the user's instructions and this project's architecture, checks, security rules, and agreed workflow when a skill suggests something different. A skill mentioning a script, plugin, MCP server, cloud resource, or deployment isn't permission to run or install it.
 - Some libraries won't have a matching skill. Use their official docs rather than assuming they're covered.
-`;
+${guidanceInstructions(plan.guidance)}`;
 }
 
 function managedInstructions(root, plan) {
@@ -86,6 +89,7 @@ function portableSkills(plan, installed) {
 			resolution: ["project", "local"].includes(status) ? status : "pinned-upstream",
 		})),
 		unmatchedPackages: plan.unmatchedPackages,
+		guidance: plan.guidance,
 	};
 }
 
@@ -94,7 +98,7 @@ function reportSkills(result, unmatched) {
 	for (const skill of result.skills) console.log(`  ${skill.name}: ${skill.status}`);
 	if (unmatched.length)
 		console.log(
-			`No verified library-specific mapping: ${unmatched.join(", ")}. Baseline guidance still applies.`,
+			`No matching library skill: ${unmatched.join(", ")}. Shared guidance and any listed official references still apply.`,
 		);
 }
 
@@ -118,5 +122,9 @@ export async function setupSkills(directory, profile, options = {}) {
 	for (const [path, content] of instructions) save(root, path, content);
 	saveJson(root, manifestPath, portableSkills(plan, installed));
 	reportSkills(installed, plan.unmatchedPackages);
+	if (plan.guidance.length)
+		console.log(
+			`Official reference guidance: ${plan.guidance.map(({ title }) => title).join("; ")}.`,
+		);
 	return installed;
 }

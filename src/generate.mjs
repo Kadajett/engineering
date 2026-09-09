@@ -6,6 +6,7 @@ import { applyProjectName, generationName, requireEmptyDestination } from "./gen
 import { displayCommand, run } from "./process.mjs";
 import { requireProfileRuntime } from "./profiles.mjs";
 import { selectSkills } from "./skills/catalog.mjs";
+import { selectGuidance } from "./skills/guidance.mjs";
 
 function tuiArguments(forwarded) {
 	let template = "core";
@@ -96,12 +97,15 @@ export function explainCreate(profile, target, options) {
 			? `Record existing quality issues with this reason: ${options.reason}`
 			: "Don't create a baseline; check the starter against your usual limits.",
 	);
-	if (options.skills !== false)
+	if (options.skills !== false) {
+		const skills = selectSkills({}, profile.id);
 		console.log(
-			`Automatic skills: ${selectSkills({}, profile.id)
-				.map((skill) => skill.name)
-				.join(", ")}. We'll check the generated dependencies for any other matching skills.`,
+			`Automatic skills: ${skills.map((skill) => skill.name).join(", ")}. We'll check the generated dependencies for any other matching skills.`,
 		);
+		const guidance = selectGuidance([], profile.id, skills);
+		if (guidance.length)
+			console.log(`Official reference guidance: ${guidance.map(({ title }) => title).join("; ")}.`);
+	}
 	return command;
 }
 

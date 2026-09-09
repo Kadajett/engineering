@@ -138,6 +138,8 @@ function saveSetup(root, plan, profile, options) {
 }
 
 function printPlan(root, profile, plan, options) {
+	const guidance =
+		options.skills === false ? { skills: [], guidance: [] } : skillPlan(root, profile.id);
 	console.log(
 		JSON.stringify(
 			{
@@ -157,7 +159,8 @@ function printPlan(root, profile, plan, options) {
 					graphify: options.graphify,
 					skills: options.skills !== false,
 				},
-				skills: options.skills === false ? [] : skillPlan(root, profile.id).skills,
+				skills: guidance.skills,
+				guidance: guidance.guidance,
 				baseline: Boolean(options.baseline),
 				open: options.open ?? null,
 				preparation: plan.scripts.prepare,

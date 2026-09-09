@@ -83,7 +83,14 @@ test("Agents SDK and Durable Objects require the actual stateful SDK signal", ()
 		additions({ dependencies: { agents: "^0.9" }, devDependencies: { wrangler: "^4" } }),
 		["agents-sdk", "cloudflare", "durable-objects", "workers-best-practices", "wrangler"],
 	);
-	assert.deepEqual(additions({ dependencies: { "@cloudflare/ai-chat": "^0.3", ai: "^6" } }), []);
+	assert.deepEqual(additions({ dependencies: { "@cloudflare/ai-chat": "^0.3", ai: "^6" } }), [
+		"agents-sdk",
+		"ai-sdk",
+		"cloudflare",
+		"durable-objects",
+		"workers-best-practices",
+		"wrangler",
+	]);
 });
 
 test("overlapping package signals deduplicate with order-independent provenance", () => {

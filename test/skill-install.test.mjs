@@ -231,12 +231,16 @@ test("nested Claude plugin installations are reused read-only without changing p
 	);
 });
 
-function seedCache(t) {
+function seedCache(t, links = {}) {
 	const context = setup(t);
 	const source = fixture(t, {
 		[`${selection.path}/SKILL.md`]: document,
 		"shared/reference.txt": "repository reference",
 	});
+	for (const [path, destination] of Object.entries(links)) {
+		mkdirSync(dirname(join(source, path)), { recursive: true });
+		symlinkSync(destination, join(source, path));
+	}
 	run(["git", "init", "--quiet", source]);
 	run(["git", "-C", source, "add", "."]);
 	run([
@@ -265,6 +269,7 @@ function seedCache(t) {
 	);
 	cpSync(source, join(entry, "source"), {
 		recursive: true,
+		verbatimSymlinks: true,
 		filter: (path) => path !== join(source, ".git"),
 	});
 	return { ...context, selected, entry };
@@ -300,4 +305,29 @@ test("corrupt cache source roots cannot redirect skill verification outside the 
 	);
 	assert.deepEqual(readdirSync(context.root), []);
 	assert.equal(readFileSync(join(outside, selection.path, "SKILL.md"), "utf8"), document);
+});
+
+test("repository caches preserve unrelated dangling links but reject broken skill references", async (t) => {
+	const context = seedCache(t, { "README.md": "missing-readme.md\n" });
+	await installSkills(context.root, [context.selected]);
+	assert.equal(readFileSync(join(target(context.root), "SKILL.md"), "utf8"), document);
+	const broken = seedCache(t, { [`${selection.path}/missing`]: "absent.md" });
+	await assert.rejects(installSkills(broken.root, [broken.selected]), /ENOENT/);
+	assert.deepEqual(readdirSync(broken.root), []);
+});
+
+test("dangling repository links cannot escape containment directly or through another link", async (t) => {
+	const outside = fixture(t, {});
+	const direct = seedCache(t, { outside: join(outside, "missing") });
+	await assert.rejects(installSkills(direct.root, [direct.selected]), /escapes its directory/);
+	const indirect = seedCache(t, { alias: "outside/missing", outside: outside });
+	await assert.rejects(installSkills(indirect.root, [indirect.selected]), /escapes its directory/);
+	assert.deepEqual(readdirSync(direct.root), []);
+	assert.deepEqual(readdirSync(indirect.root), []);
+});
+
+test("unresolved parent traversals stay rejected even when their immediate symlink is local", async (t) => {
+	const context = seedCache(t, { alias: "inside/../missing", inside: "." });
+	await assert.rejects(installSkills(context.root, [context.selected]), /ENOENT/);
+	assert.deepEqual(readdirSync(context.root), []);
 });

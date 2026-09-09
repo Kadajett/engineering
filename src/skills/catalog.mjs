@@ -7,6 +7,7 @@ const sources = {
 	tanstack: ["TanStack/router", "49bcd4db743dba4a783d5533a42a0f97a5721292"],
 	clerk: ["clerk/skills", "c77dfc77a4f995673583c520da6630b60a2aa1de"],
 	opentui: ["anomalyco/opentui", "97a20ab24953cb7a08d4ad319fdc59b1f32c55a8"],
+	ai: ["vercel/ai", "45f2b6a5bc06bdb40a847ea961f8d7ca7cd86563"],
 };
 
 const definitions = [
@@ -18,6 +19,7 @@ const definitions = [
 	["cloudflare", "workers-best-practices"],
 	["cloudflare", "agents-sdk"],
 	["cloudflare", "durable-objects"],
+	["ai", "ai-sdk", "skills/use-ai-sdk"],
 	["vercel", "vercel-react-best-practices", "skills/react-best-practices"],
 	["hono", "hono"],
 	["opentui", "opentui", "packages/web/src/content"],
@@ -74,6 +76,9 @@ const packageSkills = new Map(
 		"@cloudflare/vite-plugin": workers,
 		// Agent instances use Durable Objects; Workers alone does not establish that signal.
 		agents: [...workers, "agents-sdk", "durable-objects"],
+		ai: ["ai-sdk"],
+		"workers-ai-provider": [...workers, "ai-sdk"],
+		"@cloudflare/ai-chat": [...workers, "agents-sdk", "durable-objects", "ai-sdk"],
 		react,
 		"react-dom": react,
 		next: react,
@@ -124,7 +129,7 @@ const profilePackages = new Map(
 	}),
 );
 
-function directPackages(manifest) {
+export function directPackages(manifest) {
 	const names = new Set();
 	for (const field of [
 		"dependencies",

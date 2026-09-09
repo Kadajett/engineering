@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 import { setupSkills } from "../src/skills.mjs";
@@ -69,4 +69,41 @@ test("dry skill setup leaves project instructions and metadata untouched", async
 	assert.equal(existsSync(join(root, ".agents")), false);
 	assert.equal(existsSync(join(root, ".engineering")), false);
 	assert.equal(existsSync(join(root, ".gitignore")), false);
+});
+
+test("guidance refresh removes an unused provider without changing app code, config, or approvals", async (t) => {
+	const manifest = JSON.stringify({
+		dependencies: { wrangler: "^4", "@sentry/cloudflare": "^10" },
+	});
+	const root = fixture(t, {
+		"package.json": manifest,
+		"AGENTS.md": "Keep my custom instructions.\n",
+		"src/index.ts": "export const app = true;\n",
+		"wrangler.jsonc": '{ "name": "my-worker" }\n',
+		".engineering/baseline.json": "Keep my approved issues.\n",
+	});
+	const options = {
+		skillsDirs: [localSkills(t, [...baseline, "cloudflare", "wrangler", "workers-best-practices"])],
+	};
+	await setupSkills(root, "generic", options);
+	const state = JSON.parse(contents(root, ".engineering/skills.json"));
+	const sentry = state.guidance.find(({ id }) => id === "sentry-cloudflare");
+	assert.ok(sentry);
+	for (const [, url] of sentry.links) assert.ok(contents(root, "AGENTS.md").includes(url));
+	assert.equal(contents(root, "package.json"), manifest);
+	assert.equal(existsSync(join(root, "node_modules")), false);
+	writeFileSync(join(root, "package.json"), JSON.stringify({ dependencies: { wrangler: "^4" } }));
+	await setupSkills(root, undefined, options);
+	assert.equal(
+		JSON.parse(contents(root, ".engineering/skills.json")).guidance.some(
+			({ id }) => id === "sentry-cloudflare",
+		),
+		false,
+	);
+	for (const [, url] of sentry.links)
+		assert.equal(contents(root, "AGENTS.md").includes(url), false);
+	assert.match(contents(root, "AGENTS.md"), /^Keep my custom instructions/);
+	assert.equal(contents(root, "src/index.ts"), "export const app = true;\n");
+	assert.equal(contents(root, "wrangler.jsonc"), '{ "name": "my-worker" }\n');
+	assert.equal(contents(root, ".engineering/baseline.json"), "Keep my approved issues.\n");
 });
