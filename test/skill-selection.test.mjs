@@ -28,6 +28,44 @@ test("actual dependencies override frontend profile guesses", () => {
 	assert.deepEqual(additions({}, "react-vite"), ["vercel-react-best-practices"]);
 });
 
+test("OpenTUI skill follows exact packages, not arbitrary scope names or profile guesses", () => {
+	assert.deepEqual(additions({}, "opentui"), ["opentui"]);
+	assert.deepEqual(additions({ dependencies: { express: "^5" } }, "opentui"), []);
+	assert.deepEqual(
+		additions({
+			dependencies: { "@opentui/solid": "^0.5", "solid-js": "^1" },
+			optionalDependencies: { "@opentui/keymap": "^0.5" },
+			peerDependencies: { "@opentui/core": "^0.5" },
+		}),
+		["opentui"],
+	);
+	assert.deepEqual(additions({ dependencies: { "@opentui/unknown": "^1" } }), []);
+	assert.deepEqual(unmatchedPackages({ dependencies: { "@opentui/unknown": "^1" } }), [
+		"@opentui/unknown",
+	]);
+});
+
+test("terminal React does not select browser advice, but mixed browser apps still do", () => {
+	const terminal = { "@opentui/react": "^0.5", react: "^19" };
+	assert.deepEqual(additions({ dependencies: terminal }), ["opentui"]);
+	assert.deepEqual(additions({ dependencies: { ink: "^6", react: "^19" } }), []);
+	assert.deepEqual(additions({ dependencies: terminal, devDependencies: { "react-dom": "^19" } }), [
+		"opentui",
+		"vercel-react-best-practices",
+	]);
+	assert.deepEqual(additions({ dependencies: { ...terminal, next: "^16" } }), [
+		"opentui",
+		"vercel-react-best-practices",
+	]);
+	assert.deepEqual(additions({ dependencies: { ...terminal, "@tanstack/react-start": "^1" } }), [
+		"opentui",
+		"react-start",
+		"start-core",
+		"vercel-react-best-practices",
+	]);
+	assert.deepEqual(additions({ dependencies: { react: "^19" } }), ["vercel-react-best-practices"]);
+});
+
 test("Workers signals select platform guidance, not the whole provider bundle", () => {
 	const expected = ["cloudflare", "workers-best-practices", "wrangler"];
 	assert.deepEqual(additions({ devDependencies: { wrangler: "^4" } }), expected);

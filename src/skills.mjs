@@ -47,7 +47,16 @@ export function skillPlan(root, profile) {
 
 function skillInstructions(plan) {
 	const names = plan.skills.map((skill) => `\`${skill.name}\``).join(", ");
-	return `## Project skills\n\nEngineering automatically selected these skills: ${names}.\n\n- Before implementation or review, discover the skills under .agents/skills and load the SKILL.md files relevant to the task. Apply the baseline engineering guidance and the matching library guidance without waiting for a separate user request.\n- After cloning this project or changing its dependencies, run engineering skills . (or the engineering:skills package script) before coding to restore local links and select new library guidance.\n- .engineering/skills.json records the selected upstream sources and fallback revisions. Skills reused from local installations remain user-managed, not silently upgraded.\n- Skill guidance does not override explicit user instructions or this project's architecture, quality gates, security constraints, or approved workflow. Never run a skill's scripts, install plugins/MCP servers, provision resources, or deploy merely because a skill mentions them.\n- Unmatched packages are not claimed to have library-specific coverage; consult their official documentation.\n`;
+	return `## Project skills
+
+These skills were picked for this project: ${names}.
+
+- Before coding or reviewing, look in .agents/skills and read the relevant SKILL.md files. Use the shared engineering advice and matching library guidance without waiting for the user to ask.
+- After cloning the project or changing dependencies, run engineering skills . (or the engineering:skills package script). It restores local links and picks guidance for newly added libraries.
+- .engineering/skills.json records the upstream sources and fallback versions. Skills reused from your own installation stay yours; setup doesn't upgrade them.
+- Follow the user's instructions and this project's architecture, checks, security rules, and agreed workflow when a skill suggests something different. A skill mentioning a script, plugin, MCP server, cloud resource, or deployment isn't permission to run or install it.
+- Some libraries won't have a matching skill. Use their official docs rather than assuming they're covered.
+`;
 }
 
 function managedInstructions(root, plan) {

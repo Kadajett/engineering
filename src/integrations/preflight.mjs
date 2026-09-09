@@ -101,7 +101,7 @@ async function hookSafety(root, hooks, beads, graphify) {
 
 async function beadsPreflight(root, env) {
 	const help = await inspect("bd", ["init", "--help"], root, env);
-	for (const flag of ["--non-interactive", "--skip-agents", "--skip-hooks"])
+	for (const flag of ["--prefix", "--non-interactive", "--skip-agents", "--skip-hooks"])
 		if (!help.includes(flag))
 			throw new Error(
 				`Installed bd does not support ${flag}; update it deliberately before adoption.`,

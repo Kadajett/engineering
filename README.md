@@ -1,16 +1,14 @@
 # "engineering"
 
-I was sick of having to bring over my code quality metrics, linters, and codegraph settings for every new project or Worker I wanted to create.
+I was sick of bringing my code quality checks, linters, and codegraph settings into every new project or Worker I wanted to build.
 
-So I built "engineering": a CLI that runs the upstream project generator, then adds my engineering defaults. Quality gates, useful agent skills, codegraph integration, and CI—without copying configuration around or maintaining another app template.
+So I built "engineering": a CLI that runs the upstream project generator, then adds the workflow I like to work with—quality checks, useful agent skills, a code graph, and CI. I get to start on the application instead of copying configuration around.
 
-Your framework keeps its tooling and application structure. "engineering" adds the workflow around it.
-
-These are my defaults, not a claim that every project should use them.
+Your framework still owns its tools and application structure. These are my defaults, not a claim that every project should use them.
 
 ## Get started
 
-Requires **Node 22.12+**, npm, and Git. Linux is the currently verified platform. This is a GitHub source release, not an npm registry release.
+You'll need **Node 22.12+**, npm, and Git. **Linux is the platform tested so far.** This is a GitHub source release, not a package published to npm.
 
 ```bash
 git clone https://github.com/Kadajett/engineering.git
@@ -20,16 +18,16 @@ npm install --global --prefix "$HOME/.local" "$PWD"
 export PATH="$HOME/.local/bin:$PATH"
 ```
 
-Keep the checkout: the user-local command links to it. Add the PATH line to your shell configuration if needed. You can also use `node ./bin/engineering.mjs` directly instead of installing the command.
+Keep the checkout: the command links to it. Add the PATH line to your shell configuration if needed. If you don't want to install a command, use `node ./bin/engineering.mjs` from the checkout instead.
 
-Inspect the native tools, then install any missing ones with your approval:
+Next, check the supporting tools and install any you're missing:
 
 ```bash
 engineering doctor
 engineering setup
 ```
 
-`setup` needs [uv](https://docs.astral.sh/uv/getting-started/installation/) to install missing Python tools. It installs missing Beads, Graphify, and Lizard; it does not install Node/uv, use sudo, or change existing application repositories. Lizard **1.24.0** is required for the quality gate. Beads and Graphify can be omitted per project.
+`setup` asks before installing Beads, Graphify, and Lizard. It needs [uv](https://docs.astral.sh/uv/getting-started/installation/) for missing Python tools; it won't install Node or uv, use sudo, or change your existing apps. The quality checks require **Lizard 1.24.0**. Beads and Graphify are optional for each project.
 
 ## Create a project
 
@@ -38,23 +36,19 @@ engineering create my-app                  # choose a project type
 engineering create hono-node my-api        # or choose directly
 engineering create react-vite my-web
 engineering create next my-site
+engineering create opentui my-terminal-app # requires Bun
 engineering create workers-ai ./MyChat --name "My Chat" --open vscode
 ```
 
-One command:
+"engineering" runs the real upstream generator, installs the project's dependencies, and adds its quality configuration, agent skills, and CI. It also sets up Beads and a code-only Graphify graph unless you turn them off. Finally, it runs the available native checks and its own quality checks, then shows how to start the app.
 
-1. Runs the real upstream generator.
-2. Adds your portable quality configuration and CI checks.
-3. Installs baseline agent skills and the matching library guidance automatically.
-4. Sets up Beads and a code-only Graphify graph.
-5. Runs preparation, native checks, and the engineering gate.
-6. Shows what is ready and the command to start your app.
+The OpenTUI starter uses **Bun 1.3.0+**, which you need to [install separately](https://bun.sh/docs/installation). "engineering" doesn't install it for you. It defaults to TypeScript Core, with React and Solid options available in the [catalog](CATALOG.md#opentui).
 
-Skills are **on by default**. You do not need to ask for them or run a separate setup command. Existing skills are reused where possible; missing verified skills are fetched and linked into the project.
+Before generation, you'll be asked whether to save a baseline of problems the starter already has. For example, if an upstream function is already over the complexity limit, an approved baseline remembers that issue so you can work on the app without fixing the whole starter first. New problems still fail, and changing that function or making its violation worse requires another look. Choose no baseline if you want every existing issue fixed before the checks pass. An existing baseline is never overwritten.
 
-Creation asks about inherited quality violations before generating anything. Approve a baseline only deliberately; declining keeps the strict gate. Existing code may need fixes before verification passes. No deployment or AI inference is performed during setup.
+Setup doesn't deploy anything or call an AI model.
 
-See all choices with `engineering list`, or preview without writing files:
+See every project type with `engineering list`, or preview a command without downloads or file changes:
 
 ```bash
 engineering plan workers-ai ./MyChat --name "My Chat"
@@ -62,24 +56,27 @@ engineering plan workers-ai ./MyChat --name "My Chat"
 
 ## Skills that fit the project
 
-Every project starts with Matt Pocock's **tdd**, **codebase-design**, and **diagnosing-bugs** skills. Library-specific guidance is selected from the actual dependencies:
+Skills are on by default—there's no extra setup command to remember. Every project starts with Matt Pocock's **tdd**, **codebase-design**, and **diagnosing-bugs** skills. The project's dependencies determine which library skills to add:
 
 - **Cloudflare Workers:** official Cloudflare, Wrangler, and Workers best practices.
 - **Cloudflare Agents SDK:** Agents SDK and Durable Objects guidance.
-- **React / Next.js:** Vercel's React and Next.js best practices.
-- **Hono, TanStack Start / Router, Clerk:** matching upstream skills and required companion skills.
+- **Web React / Next.js:** Vercel's React and Next.js best practices.
+- **OpenTUI:** the official OpenTUI skill, including Core, React, and Solid renderers. Terminal React alone doesn't pull in browser-focused React guidance.
+- **Hono, TanStack Start / Router, Clerk:** matching upstream skills and any companion skills they need.
 
-Sources are vetted and pinned, not selected by popularity alone. Packages without a verified mapping are reported; baseline guidance still applies.
+The catalog uses reviewed sources and pinned revisions. If a library has no verified match, "engineering" says so rather than pretending it has library-specific guidance.
 
-Skills are discoverable through shared/Codex, Claude, Pi, and OMP project directories. Local symlinks stay out of Git; `.engineering/skills.json` records portable sources. Generated agent instructions explain when to use the skills and refresh them after dependencies change.
+Existing skills are reused where possible, and your user-level skill directories are left alone. Missing skills are fetched and linked into the project's shared/Codex, Claude, Pi, and OMP directories. Local links stay out of Git; `.engineering/skills.json` records the sources another machine can use.
 
-After cloning a generated project or changing its dependencies:
+After cloning a generated project or changing its dependencies, run this with the project's package manager:
 
 ```bash
 npm run engineering:skills
 ```
 
-Existing projects—including ones without an engineering package—can get skills directly with `engineering skills .`. This does not rebaseline or re-adopt them. Use `--skills-dir ~/my-skills` to reuse another local collection.
+You can also run `engineering skills .` in an existing project, even one without the engineering package. It adds skills without adopting the project or changing its baseline. Use `--skills-dir ~/my-skills` to reuse another collection.
+
+Generated agent instructions explain when to load skills, but making them available isn't a guarantee that every agent will follow them.
 
 ## Bring an existing project
 
@@ -87,29 +84,29 @@ Existing projects—including ones without an engineering package—can get skil
 engineering adopt . --profile generic
 ```
 
-Existing scripts, framework configuration, and application logic remain yours. Setup adds the engineering commands and runs the available native checks. Run your actual application tests too; the wrapper does not guess whether an arbitrary test script watches or exits.
+Your scripts, framework configuration, and application code stay yours. Adoption adds the engineering commands and runs the available native checks. You should still run your application tests: "engineering" doesn't assume an arbitrary `test` script exits rather than starting a watcher.
 
-Useful options:
+A few useful options:
 
-| Option | Purpose |
+| Option | What it does |
 | --- | --- |
-| `--name "My App"` | Separate application name from destination directory |
-| `--open vscode` | Open the workspace while final verification finishes |
-| `--no-baseline` | Keep the strict gate without an approval prompt |
-| `--baseline --reason "..."` | Explicitly approve the initial inherited snapshot |
-| `--no-beads --no-graphify --no-ci --no-skills` | Omit integrations you do not want |
-| `--dry-run` | Inspect the plan without writes or downloads |
+| `--name "My App"` | Uses an application name different from the destination directory. |
+| `--open vscode` | Opens the workspace while the final checks finish. |
+| `--no-baseline` | Skips the baseline question and accepts no new exceptions. |
+| `--baseline --reason "..."` | Saves the starter's existing issues with your approval reason, after native checks pass. |
+| `--no-beads --no-graphify --no-ci --no-skills` | Leaves out the integrations you don't want. |
+| `--dry-run` | Shows the plan without file changes or downloads. |
 
 ## What gets enforced?
 
-Default limits: cyclomatic complexity **10**, function NLOC **50**, parameters **4**, nesting **4**, cognitive complexity **15**, and ordinary file length **300** lines. Generated/vendor output is excluded. TypeScript checks preserve framework runtime settings while adding strictness. Tests have their own length allowances.
+The default limits are cyclomatic complexity **10**, function NLOC **50**, parameters **4**, nesting **4**, cognitive complexity **15**, and ordinary file length **300** lines. Generated and vendored output is excluded; tests have their own length allowances. TypeScript checks keep the framework's runtime settings and add strictness.
 
-Configuration lives in `.engineering/config.json`. Approved inherited debt is tracked separately and never silently expanded. Beads, Graphify, and each project's baseline remain independent.
+You can adjust the scope and limits in `.engineering/config.json`. A project's approved baseline is stored separately and never grows automatically. `engineering prune .` removes allowances you've fixed; it doesn't approve new ones. Each project's baseline, Beads data, and Graphify graph are independent.
 
 ## More detail
 
 - [Generator catalog](CATALOG.md): supported frameworks, upstream commands, and Cloudflare resources.
-- [CLI and quality reference](docs/REFERENCE.md): skills, safety boundaries, baselines, caching, CI, and analyzer scope.
+- [CLI and quality reference](docs/REFERENCE.md): skills, baselines, checks, caching, and CI.
 - [MIT license](LICENSE).
 
-To work on "engineering" itself, install Lizard 1.24.0 and run `npm ci && npm run check`. The checks use real Git/native-tool fixtures where available; some require package registry access. The layer itself has no inherited baseline.
+To work on "engineering" itself, install Lizard 1.24.0 and run `npm ci && npm run check`. Some checks need native tools or package registry access. The package checks its own source without a baseline.

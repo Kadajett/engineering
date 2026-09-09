@@ -3,19 +3,20 @@ import { createInterface } from "node:readline/promises";
 export async function chooseBaseline(options) {
 	if (options.dryRun || options.baseline || options.noBaseline) return options;
 	if (!process.stdin.isTTY || !process.stdout.isTTY) {
-		console.log("Initial baseline: not approved; new violations will fail verification.");
+		console.log("No baseline requested. We'll check the starter against your usual limits.");
 		return options;
 	}
 	const prompt = createInterface({ input: process.stdin, output: process.stdout });
 	try {
 		const answer = (
 			await prompt.question(
-				"Initial inherited debt: type 'baseline: <approval reason>' to accept it after native checks, or Enter for no baseline: ",
+				"If the starter already has quality issues, we can remember them so only new ones fail.\nType 'baseline: your reason' to do that, or press Enter to leave the checks as they are: ",
 			)
 		).trim();
 		if (!answer || /^(?:n|no)$/i.test(answer)) return { ...options, noBaseline: true };
 		const reason = /^baseline:\s*(\S.*)$/i.exec(answer)?.[1];
-		if (!reason) throw new Error("Expected 'baseline: <reason>' or Enter; nothing created.");
+		if (!reason)
+			throw new Error("Type 'baseline: your reason' or press Enter. Nothing has been created yet.");
 		return { ...options, baseline: true, reason };
 	} finally {
 		prompt.close();

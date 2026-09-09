@@ -107,7 +107,7 @@ test("Cloudflare safety guards reject both enabling and negation overrides", () 
 	}
 });
 
-test("Cloudflare slugs remain valid and distinguish truncated and non-Latin names", () => {
+test("project slugs remain valid and distinguish truncated and non-Latin names", () => {
 	assert.equal(projectSlug("Café Support & AI"), "cafe-support-ai");
 	for (const name of ["中文", "!!!", "a".repeat(100)])
 		assert.match(projectSlug(name), /^[a-z0-9][a-z0-9-]{0,56}[a-z0-9]$/);

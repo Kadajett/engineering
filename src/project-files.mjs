@@ -9,7 +9,22 @@ export const scripts = {
 };
 
 function agentInstructions(profile) {
-	return `## Engineering layer\n\nThis project uses @kadajett/engineering (profile: ${profile.id}).\n\n- Read .engineering/config.json for source scope, strict TypeScript projects, limits and boundaries.\n- Run the package manager's engineering:check script alongside the framework's own lint, format, build and tests. Neither replaces the other.\n- Keep the framework generator and application source upstream-owned. Do not copy checker implementation into this project or repair framework code merely to install rules.\n- Inherited debt can be captured once with engineering baseline --accept --reason \"approved reason\". Never recapture a baseline to bless new failures. engineering prune only removes/reduces resolved allowances.\n- Preserve existing package manager, formatter, linter and tsconfig module/runtime settings.\n- Tests retain complexity/nesting/parameter rules; function length is exempt and file length is capped at 1000. Generated/vendor/build files are excluded explicitly.\n- Graphify is structural navigation, not source of truth. Keep .env/secrets out of extraction; no semantic model calls without approval.\n- Use Beads when enabled; do not copy another project's .beads state. Do not add remotes, deploy or provision cloud resources during setup.\n- Cloudflare bindings (D1, R2, KV, Workers AI, Durable Objects, Queues, Vectorize) are project-specific. Use upstream Wrangler commands/types, not guessed IDs or fabricated bindings.\n- Prefer functions, immutable data, guard clauses, explicit dependencies and runtime validation at trust boundaries. Coverage and duplication remain review targets; do not claim they are automated by this layer.\n\nThe packed devDependency in .engineering/vendor is committed with the lockfile: checks work without the author's home directory. See .engineering/state.json for setup provenance.`;
+	return `## Working on this project
+
+This project uses @kadajett/engineering with the ${profile.id} profile.
+
+- Start with .engineering/config.json: it lists the source files, TypeScript projects, code limits, and import boundaries we check.
+- Run the package manager's engineering:check script as well as the framework's own lint, format, build, and tests. They catch different problems.
+- Keep the framework's app structure and source intact during setup. The checker belongs in its package, not copied into the app.
+- If we're keeping known quality issues, record them once with engineering baseline --accept --reason "why we're keeping them". Don't reset the baseline to make new failures pass. Run engineering prune after fixing old issues to remove their allowances.
+- Keep the project's existing package manager, formatter, linter, and TypeScript module/runtime settings.
+- Tests follow the same complexity, nesting, and parameter limits as app code, but have no function-length limit and may be up to 1000 lines per file. Generated, vendor, and build files are excluded through configuration.
+- Use Graphify to help navigate, then check the source itself. Keep secrets and .env files out of extraction, and ask before using semantic model calls.
+- Use Beads when it's enabled, with this project's own .beads state. Setup isn't permission to add remotes, deploy, or create cloud resources.
+- For Cloudflare projects, use the actual Wrangler configuration, generated types, and resource IDs. Bindings belong to this project, not to an example from another app.
+- Prefer functions, immutable data, early returns, and explicit dependencies. Validate data at trust boundaries. Review coverage and duplication yourself; these checks don't measure them.
+
+Commit the package in .engineering/vendor with the lockfile so everyone can run the same checks without access to the author's machine. The setup details are in .engineering/state.json.`;
 }
 
 function workflow(manager, nativeScripts) {

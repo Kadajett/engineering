@@ -5,6 +5,7 @@ import { basename, join } from "node:path";
 import test from "node:test";
 import { extractGraph, integrate } from "../src/integrations.mjs";
 import { exclusions, inventory } from "../src/quality/files.mjs";
+import { projectEnvironment } from "../src/integrations/process.mjs";
 import { fixture } from "./fixture.mjs";
 
 const nativeGraphify = {
@@ -13,6 +14,29 @@ const nativeGraphify = {
 			? "Graphify is not installed"
 			: false,
 };
+
+const nativeBeads = {
+	skip: spawnSync("bd", ["--version"]).error?.code === "ENOENT" ? "Beads is not installed" : false,
+};
+
+test(
+	"Beads works in spaced numeric folders and keeps existing issues on repeat setup",
+	nativeBeads,
+	async (t) => {
+		const parent = fixture(t, { "123 My Project/index.ts": "export const value = 1;\n" });
+		const root = join(parent, "123 My Project");
+		execFileSync("git", ["init", "-q", root]);
+		await integrate(root, { graphify: false });
+		const options = { cwd: root, env: projectEnvironment(root), encoding: "utf8" };
+		const issue = JSON.parse(
+			execFileSync("bd", ["create", "Keep this issue", "--type", "task", "--json"], options),
+		);
+		await integrate(root, { graphify: false });
+		const [preserved] = JSON.parse(execFileSync("bd", ["show", issue.id, "--json"], options));
+		assert.equal(preserved.id, issue.id);
+		assert.equal(preserved.title, "Keep this issue");
+	},
+);
 
 function repository(t, files) {
 	const root = fixture(t, files);

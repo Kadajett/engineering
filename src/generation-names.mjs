@@ -31,13 +31,8 @@ export function requireEmptyDestination(root) {
 	}
 }
 
-export function generationName(profile, root, name) {
-	if (name !== undefined && (typeof name !== "string" || !name.trim())) {
-		throw new Error("Project name cannot be empty");
-	}
-	return name !== undefined || profile.generator?.package.startsWith("create-cloudflare@")
-		? projectSlug(name ?? basename(root))
-		: basename(root);
+export function generationName(root, name) {
+	return projectSlug(name === undefined ? basename(root) : name);
 }
 
 function escapeHtml(value) {

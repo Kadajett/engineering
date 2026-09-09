@@ -1,8 +1,8 @@
 {
 	"name": "@kadajett/engineering",
-	"version": "0.3.0",
+	"version": "0.4.0",
 	"private": true,
-	"description": "My code quality metrics, linters, and codegraph settings for upstream-generated projects and Workers",
+	"description": "Your usual quality checks, agent skills, and codegraph setup, ready in the next app or terminal tool",
 	"license": "MIT",
 	"author": "Kadajett",
 	"repository": {

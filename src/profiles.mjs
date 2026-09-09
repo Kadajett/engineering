@@ -1,3 +1,5 @@
+import { run } from "./process.mjs";
+
 const cloudflareResources = [
 	"D1",
 	"R2",
@@ -59,6 +61,23 @@ export const profiles = [
 		docs: ["https://expressjs.com/en/starter/generator.html"],
 		warnings: [
 			"The official generator emits JavaScript/CommonJS, not TypeScript. Default view engine is Jade; pass --no-view or --view pug if desired. Its --git flag creates .gitignore, not a git repository.",
+		],
+		resources: [],
+	},
+	{
+		id: "opentui",
+		label: "OpenTUI (terminal app)",
+		description: "TypeScript terminal app from create-tui, using OpenTUI Core by default.",
+		generator: {
+			package: "create-tui@0.0.11",
+			args: ["{target}", "--template", "core", "--no-git", "--no-install"],
+		},
+		checkScripts: ["typecheck"],
+		checksReadOnly: true,
+		docs: ["https://opentui.com/docs/getting-started/", "https://github.com/msmps/create-tui"],
+		warnings: [
+			"Install Bun 1.3.0 or newer first; the upstream starters use Bun and include its lockfile.",
+			"Pass --template react or --template solid after -- to choose another terminal renderer. Templates come from upstream main; the generator skips git and dependency installation.",
 		],
 		resources: [],
 	},
@@ -221,4 +240,19 @@ export function getProfile(id) {
 	const profile = profiles.find((entry) => entry.id === id);
 	if (!profile) throw new Error(`Unknown engineering profile: ${id}`);
 	return profile;
+}
+
+export function requireProfileRuntime(profile) {
+	if (profile.id !== "opentui") return;
+	const message =
+		"OpenTUI starters need Bun 1.3.0 or newer. Install Bun from https://bun.sh before creating or adopting this project.";
+	let version;
+	try {
+		version = run(["bun", "--version"], { capture: true, timeout: 10000 });
+	} catch (cause) {
+		throw new Error(message, { cause });
+	}
+	const match = /^(\d+)\.(\d+)\.(\d+)$/.exec(version);
+	if (!match || Number(match[1]) < 1 || (Number(match[1]) === 1 && Number(match[2]) < 3))
+		throw new Error(`${message} Found: ${version}`);
 }

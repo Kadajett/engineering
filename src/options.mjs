@@ -75,37 +75,42 @@ export function parseOptions(args) {
 }
 
 export function usage() {
-	return `engineering — upstream generators + reusable local engineering policy
+	return `engineering — your usual tools, ready in the next project
 
 Commands:
-  list                                      Show project selections
-  create [profile] <directory> [-- flags]    Generate, prepare, integrate and verify
-  create <directory> --generator pkg         Use another upstream npm generator
-  adopt [directory] --profile generic        Install rules and verify existing code
-  plan <profile> <directory>                 Preview without network or writes
-  skills [directory]                        Restore automatic baseline/library skills
-  check [directory]                          Read-only policy gate
-  baseline [directory] --accept --reason X   Approve initial inherited debt
-  prune [directory]                          Reduce resolved allowances only
-  doctor                                    Inspect prerequisites
-  setup                                     Explicitly install missing tools
+  list                                      Browse the available project types
+  create [profile] <directory> [-- flags]     Create an app and set up your tools
+  create <directory> --generator pkg         Use another npm project generator
+  adopt [directory] --profile generic        Add your tools to an existing project
+  plan <profile> <directory>                 See what would happen, without changes
+  skills [directory]                        Set up or restore the project's skills
+  check [directory]                         Check the code without changing it
+  baseline [directory] --accept --reason X   Remember approved existing issues
+  prune [directory]                         Remove allowances for issues you've fixed
+  doctor                                    See which tools are ready or missing
+  setup                                     Install the missing tools
 
 Create/adopt options:
-  --name NAME            Separate app/display name (create only)
-  --open vscode          Open workspace while verification finishes
-  --baseline --reason X  Approve initial debt after native checks
-  --no-baseline          Explicit zero-debt policy; suppress approval prompt
-  --manager npm|pnpm|yarn|bun  Preserve existing manager choices
-  --install-tools        Explicitly install missing prerequisites
-  --no-beads --no-graphify --no-ci --no-skills  Omit selected integrations
-  --skills-dir PATH      Reuse skills from an additional local directory (repeatable)
-  --allow-deprecated     Permit legacy Create React App
-  --dry-run              Show plan only; never prompt or open the editor
+  --name NAME            Give the app a different name from its folder (create only)
+  --open vscode          Open VS Code while the last checks run
+  --baseline --reason X  Remember existing issues after the native checks pass
+  --no-baseline          Don't create a baseline or ask about one
+  --manager npm|pnpm|yarn|bun  Choose a manager without replacing an existing choice
+  --install-tools        Install missing tools before setup
+  --no-beads --no-graphify --no-ci --no-skills  Leave out what you don't need
+  --skills-dir PATH      Reuse another local skill collection (repeatable)
+  --allow-deprecated     Allow a legacy Create React App project
+  --dry-run              Show the plan without changing files or opening an editor
 
-Interactive creation asks about inherited debt before generating anything.
-Non-interactive creation never implicitly approves a baseline.
-Baseline and matching library skills are installed automatically during setup.
-Arguments after -- belong to upstream, except unsafe fixed-template overrides.
-Existing application logic and framework tooling remain upstream-owned.
+Try: engineering create opentui my-terminal-app
+Or:  engineering create my-app
+
+Some starters come with code that doesn't meet your limits. In an interactive
+terminal, we'll ask whether to remember those issues in a baseline. Without
+your approval, they still need fixing. New issues always need fixing.
+
+Shared engineering skills and matching library guidance are set up for you.
+Arguments after -- go to the upstream generator, apart from conflicting safety flags.
+Your framework keeps its own application structure and tooling.
 `;
 }

@@ -2,67 +2,79 @@
 
 [Getting started](../README.md) · [Generator catalog](../CATALOG.md)
 
+This is the detailed guide to what "engineering" adds, how its checks work, and which parts stay under your control.
+
 ## Automatic agent skills
 
-Every create/adopt installs baseline guidance plus relevant library skills without a separate request. The baseline is Matt Pocock's **tdd**, **codebase-design**, and **diagnosing-bugs**. These are self-contained; interactive issue-tracker/setup workflows are not silently run.
+`create` and `adopt` install skills by default. Every project gets Matt Pocock's **tdd**, **codebase-design**, and **diagnosing-bugs** guidance, then any verified library skills that match its dependencies. Installing these skills doesn't run their interactive setup or issue-tracker workflows.
 
-| Signal | Guidance |
+| Project dependency or profile | Skills added |
 | --- | --- |
-| Workers profiles, Wrangler, Workers types, Cloudflare Vite plugin | Cloudflare, Wrangler, Workers best practices |
-| Cloudflare `agents` package | Also Agents SDK and Durable Objects |
-| React, React DOM, Next.js | Vercel React/Next best practices |
+| Workers profile, Wrangler, Workers types, or Cloudflare Vite plugin | Cloudflare, Wrangler, Workers best practices |
+| Cloudflare `agents` package | Agents SDK and Durable Objects, in addition to Workers guidance |
+| Web React or Next.js | Vercel React/Next best practices |
+| OpenTUI Core, React, or Solid packages | Official OpenTUI skill |
 | Hono packages | Official Hono skill |
 | TanStack React Start / Router | Framework skills and their required core skills |
-| Clerk SDKs | Clerk setup and the matching framework/backend guidance |
+| Clerk SDKs | Clerk setup and matching framework/backend guidance |
 
-Selection uses direct dependencies, dev dependencies, optional dependencies and peers. Actual frontend dependencies override profile guesses. Skills are deduplicated; unrelated provider skills are not bundled. Unmapped packages are reported and retain baseline guidance, not invented library coverage.
+Selection looks at direct dependencies, dev dependencies, optional dependencies, and peers. The actual frontend dependencies take precedence over the profile's default. React used only by OpenTUI doesn't bring in browser-focused Vercel guidance; web dependencies still receive it. Duplicate skills are installed once, and unrelated provider skills are left out. Packages without a verified match are reported. The general skills still apply, but aren't presented as library-specific coverage.
 
-Sources: [Matt Pocock](https://github.com/mattpocock/skills), [Cloudflare](https://github.com/cloudflare/skills), [Vercel](https://github.com/vercel-labs/agent-skills), [Hono](https://github.com/honojs/skills), [TanStack](https://github.com/TanStack/router), and [Clerk](https://github.com/clerk/skills). The catalog records verified skill names, paths and immutable commits; it is not a popularity-based search or a claim to cover every package.
+Sources include [Matt Pocock](https://github.com/mattpocock/skills), [Cloudflare](https://github.com/cloudflare/skills), [Vercel](https://github.com/vercel-labs/agent-skills), [OpenTUI](https://github.com/anomalyco/opentui), [Hono](https://github.com/honojs/skills), [TanStack](https://github.com/TanStack/router), and [Clerk](https://github.com/clerk/skills). The skill catalog records reviewed names, paths, and immutable commits rather than picking a popular search result at install time.
 
 ### Reuse and portability
 
-Existing valid project skills win. Otherwise, the installer checks explicit `--skills-dir` locations, shared/user agent skill directories, and registered Claude plugin installations. Local sources are read-only and are not silently upgraded. Missing skills are fetched from the catalog's pinned public repositories into `${XDG_CACHE_HOME:-$HOME/.cache}/kadajett-engineering/skills-v1`.
+A valid skill already in the project takes precedence. Otherwise, the installer looks in your `--skills-dir` locations, shared/user agent skill directories, and registered Claude plugin installations. It reads those sources without changing or upgrading them. Missing skills come from the catalog's pinned public repositories and are cached in `${XDG_CACHE_HOME:-$HOME/.cache}/kadajett-engineering/skills-v1`.
 
-The complete upstream repository is retained so reference files remain available. Cached contents are checked against the pinned Git tree. Source code, install scripts, plugins, MCP servers and model calls are not executed or enabled by skill installation.
+The cache keeps the full upstream repository so linked references remain available, and checks its contents against the pinned Git tree. Fetching a skill doesn't execute repository code or install scripts, enable plugins or MCP servers, or call a model.
 
-Project links are created under `.agents/skills`, `.claude/skills`, `.pi/skills`, and `.omp/skills` for shared/Codex, Claude, Pi, and OMP discovery. Other agents that support `.agents/skills` can use that directory. Existing directories are preserved, conflicting or dangling links require deliberate repair, and destination parent symlinks are refused.
+Project links go in `.agents/skills`, `.claude/skills`, `.pi/skills`, and `.omp/skills` for shared/Codex, Claude, Pi, and OMP discovery. Other agents that support `.agents/skills` can use it too. Existing directories are kept. Conflicting or dangling links need to be repaired before installation can continue; the installer also refuses destination parent directories that are symlinks.
 
-Only the local symlinks are ignored by Git. Commit `.engineering/skills.json`: it records portable fallback sources/revisions, never absolute machine paths. Local/project skill contents remain user-managed, so their exact bytes are not claimed to match the pinned fallback. Existing fallback revisions are retained on refresh.
+Only the machine-local symlinks are ignored by Git. Commit `.engineering/skills.json`: it records fallback sources and revisions without absolute machine paths, so another developer can restore the skills. Your existing project and local skills remain yours to edit; their contents may differ from the pinned fallback. Refreshing skills keeps any fallback revisions already recorded.
 
 ```bash
-engineering skills .                         # restore links after clone/dependency changes
-engineering skills . --dry-run               # inspect without downloads or writes
+engineering skills .                         # restore links after a clone or dependency change
+engineering skills . --dry-run               # preview without downloads or file changes
 engineering create hono-node my-api --skills-dir ~/my-skills
-engineering create workers-ai my-worker --no-skills  # explicit opt-out
+engineering create workers-ai my-worker --no-skills
 ```
 
-`--skills-dir` is repeatable and may point at a flat skill directory or an upstream repository root. `engineering skills` does not re-adopt the project, alter its quality baseline, or require a layer-version upgrade. Generated agent instructions tell agents to load applicable guidance and refresh after dependency changes. Skills are discoverable automatically; agents still decide when to load them, and no tool can guarantee an agent follows every instruction.
+You can repeat `--skills-dir` and point it at either a flat skill collection or an upstream repository root. `engineering skills` works without re-adopting the project, changing its quality baseline, or upgrading the installed engineering package.
+
+Generated agent instructions explain when to load matching skills and refresh them after dependency changes. The links make guidance discoverable; they don't guarantee an agent will load it or follow every instruction.
 
 ## One project selection
 
 ```bash
-engineering create my-app                    # interactive selection
-engineering plan hono-node my-api            # no network or writes
-engineering create hono-node my-api          # real official generator, then rules
+engineering create my-app                    # choose interactively
+engineering plan hono-node my-api            # preview without network access or writes
+engineering create hono-node my-api
 engineering create express my-server -- --no-view --git
 engineering create react-vite my-spa
 engineering create next my-next-app -- --yes
 engineering create tanstack-start my-start-app
+engineering create opentui my-terminal-app
+engineering create opentui my-react-terminal -- --template react
+engineering create opentui my-solid-terminal -- --template solid
 engineering create epicflare my-fullstack-app
 engineering create cloudflare-workers my-worker -- --lang ts
-engineering create cloudflare my-cloudflare-app  # upstream category/template wizard
+engineering create cloudflare my-cloudflare-app  # use C3's template picker
 engineering create workers-ai ./MyChat --name "My Chat" --open vscode
 ```
 
-See [CATALOG.md](../CATALOG.md) for all profile IDs, exact upstream commands, primary references and warnings. CRA requires `--allow-deprecated`; Vite is the recommended plain React SPA option. Express stays normal upstream JavaScript/CommonJS; this wrapper does not invent a TypeScript conversion.
+The [catalog](../CATALOG.md) lists every profile, its upstream command, and profile-specific requirements. Vite is the plain React SPA option; deprecated CRA needs `--allow-deprecated`. Express remains upstream JavaScript/CommonJS.
 
-The generator owns its interactive prompts, dependencies, application structure and supported options. Arguments after `--` go directly to it, except conflicting fixed-template C3 overrides. Unpinned generator packages/tags are resolved once to an exact npm version and recorded in `.engineering/state.json`; exact versions need no registry-version probe. The application's own lockfile pins its resulting dependencies. Some upstream generators install dependencies or create a Git repository/commit themselves.
+OpenTUI defaults to TypeScript Core and also supports React or Solid through `--template` (or `-t`). It requires **Bun 1.3.0+**, installed separately, and keeps the starter's Bun package manager and lockfile. You can also forward `--verbose` (`-v`); other options are rejected for this profile so they can't change its setup behavior. The pinned `create-tui@0.0.11` CLI downloads current upstream templates; the template source itself isn't pinned. Current starters provide `typecheck` for verification and `dev` for interactive use. Start the terminal app with `bun run dev`; the starters don't declare `build` or `start` scripts.
 
-`--name` separates the application name from the destination directory. A valid package/Worker slug is generated in a temporary sibling directory when necessary, then moved to the exact requested destination before adoption. For Workers AI, the wrapper also updates package/lockfile names, Wrangler names and HTML title/heading, with HTML escaping; chat implementation files remain upstream-owned. Nonempty destinations are never overwritten.
+The upstream generator owns its prompts, dependencies, application structure, and supported options. Arguments after `--` go to it, subject to the built-in C3 and OpenTUI restrictions described in the catalog. Unpinned generator packages and tags are resolved once to an exact npm version, then recorded in `.engineering/state.json`. Already-exact versions don't need that registry lookup. The resulting application's lockfile pins its dependencies. Some generators also install dependencies or create a Git repository and commit.
 
-`--open vscode` opens the workspace after configuration and integrations, while final verification finishes. It requires an available `code` CLI; it does not start a dev server. `plan` and `--dry-run` never prompt, open an editor, install dependencies or contact the network.
+`--name` lets the app name differ from the destination directory. Every generator uses the same naming rule: turn that name, or the folder name when `--name` is absent, into a lowercase, hyphenated package name. When the generated name differs from your folder, generation runs in a temporary sibling directory, then moves the app to your exact destination before adoption. OpenTUI always uses staging so its generator never offers to delete an existing destination. For Workers AI, "engineering" also updates package and lockfile names, Wrangler names, and the HTML title and heading. HTML names are escaped; the chat implementation stays unchanged. A nonempty destination is never overwritten.
 
-The Workers AI profile pins C3 and a verified upstream template revision, with one guarded dependency compatibility correction described in [CATALOG.md](../CATALOG.md). There are no local framework templates or application-logic patches. Other profiles continue to follow their upstream generator releases.
+New Beads databases use a safe prefix derived from the folder name too, so spaces and punctuation don't break setup. Beads handles numeric prefixes according to its own naming rules. Existing databases and issue IDs stay unchanged.
+
+`--open vscode` uses the `code` CLI to open the workspace after configuration and integrations are ready, while final checks finish. It doesn't start a development server. `plan` and `--dry-run` don't prompt, open an editor, install dependencies, or use the network.
+
+Workers AI pins a verified C3/template pair and handles one known dependency conflict, explained in the [catalog](../CATALOG.md#other-official-cloudflare-categories). OpenTUI pins its generator version. Other profiles follow upstream generator releases. There are no local framework templates or application-logic patches.
 
 ### Another upstream generator
 
@@ -70,84 +82,99 @@ The Workers AI profile pins C3 and a verified upstream template revision, with o
 engineering create my-other-app --generator create-vite@latest -- --template vanilla-ts --no-immediate
 ```
 
-Custom generators receive the target as their first argument. For a generator with a different command layout, run its official command yourself, then `adopt`. An explicitly chosen npm generator executes third-party code; review its documentation and use a pinned package version when reproducibility is important. Built-in C3 profiles forbid overriding no-deploy/no-open safeguards. Arbitrary custom generators have their own behavior; this wrapper cannot make third-party code safe.
+A custom generator receives the target as its first argument. If its command needs a different layout, run the official command yourself, then adopt the result. Choosing a generator means running that package's third-party code, so review its documentation and pin a version when repeatability matters. The built-in C3 profiles prevent no-deploy/no-open options from being overridden; arbitrary custom generators have their own behavior and aren't sandboxed by "engineering".
 
 ## Adopt an existing project
 
 ```bash
 engineering adopt /path/to/repo --profile generic --dry-run
 engineering adopt /path/to/repo --profile next
-# After reviewing native tests/typecheck and approving inherited debt:
-engineering baseline /path/to/repo --accept --reason 'Approved initial inherited snapshot'
+
+# After reviewing the existing issues and running native checks:
+engineering baseline /path/to/repo --accept --reason 'Reviewed the starter functions over the limits'
 ```
 
-Interactive creation asks about inherited debt before generation. Enter `baseline: <approval reason>` only with explicit approval; Enter or `no` keeps the strict gate. Non-interactive runs never approve debt implicitly. `--no-baseline` suppresses this prompt without removing an existing baseline. Or supply the initial decision explicitly:
+A baseline remembers quality problems the project already has so that new problems still fail. For example, you might accept a starter's existing 60-line function while keeping the 50-line limit for your work. That isn't permission to add more long functions, enlarge the old violation, or change the function without another check. Compiler, analyzer, and configuration errors must be fixed; a baseline can't hide them. A changed source file, different quality configuration, or incompatible analyzer version can also make an old allowance stop matching.
+
+Interactive creation asks about the baseline before running the generator. To approve one, type `baseline: <approval reason>`. Enter or `no` accepts no exceptions. Noninteractive commands never approve a baseline on their own. `--no-baseline` skips the question without deleting an existing baseline. You can also supply your decision on the command line:
 
 ```bash
-engineering create epicflare my-app --baseline --reason 'Approved upstream starter snapshot'
-engineering adopt /path/to/repo --profile generic --baseline --reason 'Approved inherited code'
+engineering create epicflare my-app --baseline --reason 'Reviewed the upstream starter issues'
+engineering adopt /path/to/repo --profile generic --baseline --reason 'Reviewed the existing code'
 ```
 
-Baselines are never copied from this repository or captured implicitly. A pre-existing baseline is never overwritten. Re-run adoption without `--baseline`; `engineering prune` only removes or reduces resolved allowances. Compiler/analyzer/configuration errors must be fixed rather than grandfathered. A source change, larger violation, different configuration or incompatible analyzer version is not silently accepted by the baseline.
+A baseline is saved only after native checks pass. It is never copied from this repository or created without approval, and an existing one is never overwritten. If a project already has a baseline, re-adopt without `--baseline`. Run `engineering prune` to remove or shrink allowances for issues you've fixed; it doesn't add new approvals.
 
-Adoption preserves existing scripts and adds `engineering:check`, `engineering:baseline`, `engineering:prune`, and `engineering:skills`. It runs preparation and native verification before reporting completion. Workers AI runs `cf-typegen`, then its upstream `check` (`tsc --noEmit && wrangler deploy --dry-run`). Other profiles run `cf-typegen` when present, then available `typecheck`, `type-check`, `check`, `lint`, and `build` scripts. Unknown `test` scripts are not guessed to be non-watching: discover and run the project's actual tests separately. A baseline is captured only after native checks pass. Conflicting reserved scripts, managed files or package-manager lockfiles are errors, not permission to replace them.
+Adoption keeps existing scripts and adds `engineering:check`, `engineering:baseline`, `engineering:prune`, and `engineering:skills`. It prepares the project and runs native verification before reporting success:
 
-Use `--no-beads`, `--no-graphify`, `--no-ci`, or `--no-skills` to omit integrations explicitly. `--manager npm|pnpm|yarn|bun` selects a manager only when it does not conflict with an existing declaration/lockfile. Missing tools fail before adoption; `--install-tools` explicitly permits installing them. Adoption targets a repository root, not a subfolder whose hooks belong to another project. Worktrees/shared external hooks and custom conflicting hooks require deliberate integration rather than automatic overwrite.
+- Workers AI runs `cf-typegen`, then its upstream `check`: `tsc --noEmit && wrangler deploy --dry-run`.
+- Other profiles run `cf-typegen` when present, then available `typecheck`, `type-check`, `check`, `lint`, and `build` scripts. For the current OpenTUI starters, that's `typecheck`.
+- Arbitrary `test` scripts aren't run automatically because they may start watchers. Find and run the application's actual tests separately.
 
-Failures preserve successful steps and report an error; external generator/package-manager/native tool operations are not transactionally rolled back. Fix the reported prerequisite and rerun. A fresh destination is required for `create`; never rerun a generator over a partially generated app—use `adopt` once its native setup is complete.
+Conflicting reserved scripts, managed files, or package-manager lockfiles stop adoption rather than being replaced. `--manager npm|pnpm|yarn|bun` chooses a manager only when it agrees with the project's existing declaration and lockfile.
+
+Use `--no-beads`, `--no-graphify`, `--no-ci`, or `--no-skills` for integrations you don't want. Missing tools are reported before adoption; `--install-tools` allows their installation. Adoption works at a repository root, not a nested folder using another project's hooks. Worktrees, shared external hooks, and conflicting custom hooks need manual integration so other projects' setup isn't overwritten.
+
+If a command fails, completed steps and generated files are kept. Generator, package-manager, and native-tool operations aren't rolled back as one transaction. Fix the reported problem, finish any incomplete native setup, and use `adopt` to continue. `create` still needs an empty destination; don't run a generator over the partially created app.
 
 ### Fast path and verification ordering
 
-Tool probes are reused within one CLI invocation. Package archives are cached by allowlisted package contents, file modes and packaging controls under `${XDG_CACHE_HOME:-$HOME/.cache}/kadajett-engineering/archives-v1`; integrity is checked and publication is atomic. A cache hit avoids another `npm pack`. Repeated adoption skips dependency installation only when manifest/lockfile bytes, manager version, direct dependency manifests and installed engineering version still match recorded installation state.
+Tool checks are reused within a CLI invocation. Package archives are cached under `${XDG_CACHE_HOME:-$HOME/.cache}/kadajett-engineering/archives-v1`, with keys based on included package contents, file modes, and packaging settings. Integrity is checked before use, and cache entries become available only after a complete write. A cache hit avoids another `npm pack`.
 
-Type generation and Git/hook setup complete before parallel work. The reviewed read-only Workers AI check overlaps Graphify extraction and the engineering gate; initial baseline capture waits for native checks and graph extraction. Unreviewed profiles run native scripts before graph/policy work. All running verification jobs settle before errors are reported. Graphify excludes known generated declarations and build output, not all handwritten `.d.ts` files.
+Repeated adoption skips dependency installation only when the recorded manifest and lockfile bytes, package-manager version, direct dependency manifests, and installed engineering version still match.
 
-Each stage reports elapsed time and success/failure, followed by total wall time; overlapping durations are not additive. Completion means configured native checks and the engineering gate passed, not that tests or deployment were performed.
+Type generation and Git/hook setup finish before parallel work starts. Workers AI and OpenTUI have reviewed read-only checks that can run alongside Graphify extraction and the engineering checks. Initial baseline capture waits for native checks and graph extraction. Other profiles run native scripts first, then graph and quality work. All running verification jobs finish before errors are reported. Graphify excludes known generated declarations and build output, while keeping handwritten `.d.ts` files in scope.
+
+Each stage reports its duration and result, followed by total elapsed time. Parallel stage durations won't add up to that total. A successful setup means the configured native and engineering checks passed; it doesn't mean application tests or deployment ran.
 
 ## What a project receives
 
-- `.engineering/config.json`: versioned source scope, exclusions, strict TS projects, limits and direct import boundaries; customize configuration, not copied checker code.
-- `.engineering/baseline.json`: optional compact, approved inherited exception snapshot.
-- `.engineering/state.json`: selected profile, generator command, package manager, installation fingerprint, layer version and completion phase.
-- `.engineering/vendor/kadajett-engineering-0.3.0.tgz`: portable devDependency archive; commit it with the manifest and lockfile. Managed `.gitignore` exceptions keep it addable even when upstream ignores `*.tgz`. CI and other machines do not need this author's home directory.
-- Managed sections in `AGENTS.md` and `CLAUDE.md`; unrelated instructions remain intact.
-- `.github/workflows/engineering.yml`: locked dependency installation, the same preparation/native checks, then the policy gate; native framework workflows are not replaced. Disable creation if your CI is not GitHub Actions.
-- Optional native Beads database/agent hooks and Graphify skill/hooks/code graph. Each project has independent state. Beads initialization may create a metadata commit; no repository remote is configured.
+- `.engineering/config.json`: versioned settings for source scope, exclusions, strict TypeScript projects, limits, and direct import boundaries. Change the configuration rather than copying checker code.
+- `.engineering/baseline.json`: an optional record of the existing issues you approved.
+- `.engineering/state.json`: the profile, generator command, package manager, installation fingerprint, engineering version, and last completed phase.
+- `.engineering/vendor/kadajett-engineering-0.4.0.tgz`: the engineering package as a portable devDependency archive. Commit it with the manifest and lockfile. Managed `.gitignore` exceptions allow it even if the starter ignores `*.tgz`, so CI and other machines can install it without this checkout.
+- Managed sections in `AGENTS.md` and `CLAUDE.md`, alongside any unrelated instructions already there.
+- `.github/workflows/engineering.yml`: locked dependency installation, the same preparation and native checks, then engineering checks. Existing framework workflows remain. Use `--no-ci` if you don't want a GitHub Actions workflow.
+- Optional Beads database and agent hooks, plus Graphify skills, hooks, and a code graph. Every project has its own state. Beads initialization may create a metadata commit; "engineering" doesn't configure a Git remote.
 
-The package archive deliberately contains no framework source, per-project baselines, tracking databases, node_modules, credentials or home-directory paths. Updating the canonical source does not silently change adopted projects. Bump the engineering package version and deliberately upgrade projects; same-version archives with different bytes are rejected. There is no automatic update daemon or framework maintenance fork.
+The archive contains no framework source, per-project baselines, tracking databases, `node_modules`, credentials, or home-directory paths. Updating the source checkout doesn't change packages already installed in other projects. To upgrade them, bump the engineering package version and adopt the new version deliberately. A same-version archive with different contents is rejected. There is no background updater or separate fork of the framework to maintain.
 
 ## Quality contract
 
 ```bash
-npm run engineering:check     # use the project's own manager
+npm run engineering:check     # use your project's package manager
 engineering check /path/to/repo
 engineering prune /path/to/repo
 ```
 
-Defaults: cyclomatic complexity 10, function NLOC 50, parameters 4, nesting 4, cognitive complexity 15, ordinary files 300 lines, test files 1000 lines. Tests are exempt from function NLOC, not all complexity rules. For JS/TS, the TypeScript AST supplies function boundaries, arity and executable token streams; Lizard 1.24.0 counts lines and branches without confusing type syntax or literal data with runtime code. Python uses Lizard directly. Narrowly configured Oxlint enforces nesting/no-any/no-non-null/no-parameter-reassignment; narrowly configured Biome supplies cognitive complexity. This is not a second whole-project formatter or recommended lint suite.
+The default limits are:
 
-TypeScript checks preserve the project's module/JSX/runtime/ambient configuration and installed compiler where available, then add strict options. JavaScript projects without a tsconfig do not acquire an invented TS build. Original compiler errors are not baseline exceptions. Source roots/exclusions and TypeScript project selection are configuration, including monorepo tsconfig references; review the generated config's scope before approving a baseline. Generated route trees, Worker bindings, vendored skills and output are excluded from metrics, while compiler-required ambient declarations still participate in typechecking.
+| Check | Limit |
+| --- | --- |
+| Cyclomatic complexity | 10 |
+| Function NLOC (non-comment lines of code) | 50 |
+| Parameters | 4 |
+| Nesting | 4 |
+| Cognitive complexity | 15 |
+| Ordinary file length | 300 lines |
+| Test file length | 1000 lines |
 
-Legacy TypeScript versions use their installed JavaScript compiler API.
-TypeScript 7/native compilers use the project's own `tsc --showConfig` and
-`tsc --noEmit` commands with strict flags discovered from its help. The package's
-older compiler is used only for AST/config plumbing, never as a silent semantic
-downgrade. Native referenced projects may require their normal build/typegen
-outputs first; use the framework's own preparation commands. Incremental check
-metadata is redirected to a temporary directory, not written into the project.
-Extensionless Node/Bun shebang entrypoints such as Express's `bin/www` receive
-the same structural and lint gates.
+Tests are exempt from the function NLOC limit, but still have complexity checks. Generated route trees, Worker bindings, vendored skills, and build output are excluded from metrics. Ambient declarations needed by the compiler still participate in typechecking.
 
-Source-level JS/TS gates cover standalone JS/JSX/TS/TSX files, their module-extension variants, and extensionless Node/Bun entrypoints. Python receives syntax, structural-complexity and file-size checks only—not JS lint, TypeScript or cognitive-complexity checks. Embedded scripts in `.vue`, `.svelte` and `.astro` files are not analyzed by this layer; retain the framework-native checks. Adoption requires a `package.json`.
+For JavaScript and TypeScript, the TypeScript AST identifies functions, parameter counts, and executable tokens. Lizard **1.24.0** then counts lines and branches without treating type syntax or literal data as runtime code. Python uses Lizard directly. Oxlint checks nesting, `any`, non-null assertions, and parameter reassignment; Biome checks cognitive complexity. Both run a narrow set of rules, not a second full lint or formatting setup.
 
-To develop this layer itself: `npm ci && npm run check`. Its own source has no
-inherited baseline. The native TypeScript devDependency is regression coverage,
-not a compiler version forced onto adopted projects.
+TypeScript checks keep the project's module, JSX, runtime, and ambient settings and use its installed compiler where available, then add strict options. A JavaScript project without a tsconfig doesn't acquire a TypeScript build. Original compiler errors can't be baselined. Source roots, exclusions, and selected TypeScript projects—including monorepo tsconfig references—are configurable. Review that scope before approving a baseline.
 
-Boundaries are configured direct runtime imports/re-exports/literal require/dynamic-import edges; they are not a transitive architecture graph and cannot resolve arbitrary runtime strings. Do not invent Next.js/TanStack server/client boundaries from directory names: use the framework's own checks and add explicit rules for your architecture. Coverage and duplication are review targets, not checks this package pretends to implement.
+Older TypeScript versions use their installed JavaScript compiler API. TypeScript 7/native compilers use the project's own `tsc --showConfig` and `tsc --noEmit`, with strict flags discovered from its help. In that case, the older compiler bundled with "engineering" handles AST and configuration parsing only; it doesn't replace the project's semantic checks. Native referenced projects may need their usual build or type-generation outputs first. Incremental check metadata goes into a temporary directory, not the project.
+
+JavaScript and TypeScript checks cover standalone JS/JSX/TS/TSX files, their module-extension variants, and extensionless Node/Bun shebang entrypoints such as Express's `bin/www`. Python gets syntax, structural-complexity, and file-size checks—not JavaScript lint, TypeScript, or cognitive-complexity checks. Embedded scripts in `.vue`, `.svelte`, and `.astro` files aren't analyzed here; keep the framework's native checks. Adoption requires a `package.json`.
+
+Import boundaries apply to configured direct runtime imports, re-exports, literal `require` calls, and literal dynamic imports. They aren't a transitive dependency graph and can't resolve arbitrary runtime strings. Next.js and TanStack server/client rules still belong to the framework; directory names alone don't establish a boundary. Add explicit import rules for your architecture where useful. Coverage and duplication remain review tasks, not checks implemented by this package.
+
+To develop "engineering", install Lizard 1.24.0 and run `npm ci && npm run check`. Its own source has no baseline. The native TypeScript devDependency exercises compatibility; it isn't a compiler version imposed on adopted projects.
 
 ## Cloudflare scope
 
-Use `cloudflare` for C3's live category/framework/template selection rather than maintaining wrappers for every template. Use `hono-workers`, `cloudflare-workers`, `workers-ai` or `epicflare` when that is the intended application.
+Use `cloudflare` for C3's current category, framework, and template picker. Choose `hono-workers`, `cloudflare-workers`, `workers-ai`, or `epicflare` directly when you already know which app you want.
 
-Cloudflare configuration and resource provisioning remain under your control. Setup generates local project files; it does not log in, deploy, provision resources, or call an AI model. Workers AI inference can be billable even during development. Graphify uses code-only extraction without model calls.
+Setup creates local project files. It doesn't log in, deploy, create Cloudflare resources, or call an AI model. You control account configuration and resources. Workers AI inference can be billable when you later run the app, including during local development. Graphify uses code-only extraction without model calls.

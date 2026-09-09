@@ -6,6 +6,7 @@ const sources = {
 	hono: ["honojs/skills", "f916476e71029ebf62160c3286550a99f0b6c687"],
 	tanstack: ["TanStack/router", "49bcd4db743dba4a783d5533a42a0f97a5721292"],
 	clerk: ["clerk/skills", "c77dfc77a4f995673583c520da6630b60a2aa1de"],
+	opentui: ["anomalyco/opentui", "97a20ab24953cb7a08d4ad319fdc59b1f32c55a8"],
 };
 
 const definitions = [
@@ -19,6 +20,7 @@ const definitions = [
 	["cloudflare", "durable-objects"],
 	["vercel", "vercel-react-best-practices", "skills/react-best-practices"],
 	["hono", "hono"],
+	["opentui", "opentui", "packages/web/src/content"],
 	["tanstack", "react-start", "packages/react-start/skills/react-start"],
 	["tanstack", "start-core", "packages/start-client-core/skills/start-core"],
 	["tanstack", "react-router", "packages/react-router/skills/react-router"],
@@ -47,6 +49,18 @@ const catalog = new Map(
 const baseline = ["tdd", "codebase-design", "diagnosing-bugs"];
 const workers = ["cloudflare", "wrangler", "workers-best-practices"];
 const react = ["vercel-react-best-practices"];
+const browserReactPackages = new Set([
+	"react-dom",
+	"next",
+	"react-router-dom",
+	"@tanstack/react-start",
+	"@tanstack/react-router",
+	"@clerk/nextjs",
+	"@clerk/react",
+	"@clerk/clerk-react",
+	"@clerk/react-router",
+	"@clerk/tanstack-react-start",
+]);
 const clerk = ["clerk", "clerk-setup"];
 const start = ["react-start", "start-core"];
 const router = ["react-router", "router-core"];
@@ -64,6 +78,13 @@ const packageSkills = new Map(
 		"react-dom": react,
 		next: react,
 		hono: ["hono"],
+		"@opentui/core": ["opentui"],
+		"@opentui/react": ["opentui"],
+		"@opentui/solid": ["opentui"],
+		"@opentui/keymap": ["opentui"],
+		"@opentui/ssh": ["opentui"],
+		"@opentui/qrcode": ["opentui"],
+		"@opentui/three": ["opentui"],
 		"@hono/node-server": ["hono"],
 		"@hono/cli": ["hono"],
 		"@tanstack/react-start": start,
@@ -99,6 +120,7 @@ const profilePackages = new Map(
 		"tanstack-start": "@tanstack/react-start",
 		"hono-node": "hono",
 		"hono-workers": "hono",
+		opentui: "@opentui/core",
 	}),
 );
 
@@ -127,11 +149,22 @@ function addSelections(selected, names, reason) {
 	}
 }
 
+function hasOnlyTerminalReact(packages) {
+	return (
+		(packages.includes("@opentui/react") || packages.includes("ink")) &&
+		!packages.some((name) => browserReactPackages.has(name))
+	);
+}
+
 export function selectSkills(manifest, profileId) {
 	const selected = new Map();
 	addSelections(selected, baseline, "baseline: trusted engineering disciplines");
 	const packages = directPackages(manifest).filter((name) => !ignoredPackage(name));
+	// React alone is a web hint unless a terminal renderer explains its presence.
+	// Mixed apps still get browser guidance from react-dom or Next.js directly.
+	const terminalOnly = hasOnlyTerminalReact(packages);
 	for (const name of packages) {
+		if (name === "react" && terminalOnly) continue;
 		addSelections(selected, packageSkills.get(name) ?? [], `package: ${name}`);
 	}
 	// A deployment profile remains useful with frontend overrides. Framework guesses

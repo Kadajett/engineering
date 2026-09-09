@@ -5,7 +5,7 @@ import { generate } from "./generate.mjs";
 import { installMissingTools, toolStatus } from "./integrations.mjs";
 import { parseOptions, usage } from "./options.mjs";
 import { packageManifest } from "./package-install.mjs";
-import { getProfile, profiles } from "./profiles.mjs";
+import { getProfile, profiles, requireProfileRuntime } from "./profiles.mjs";
 import { chooseBaseline } from "./baseline-choice.mjs";
 import { Stages } from "./stages.mjs";
 import { setupSkills } from "./skills.mjs";
@@ -53,6 +53,7 @@ async function createProject(targets, options) {
 	if (options.generator && targets.length !== 1)
 		throw new Error("Custom generator takes exactly one target directory");
 	if (options.dryRun) return generate(profile, targets.at(-1), options);
+	requireProfileRuntime(profile);
 	const approved = await chooseBaseline(options);
 	const stages = new Stages();
 	try {

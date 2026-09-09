@@ -8,6 +8,7 @@ import { selectManager } from "./managers.mjs";
 import { dependencySpec, packageManifest, packInto } from "./package-install.mjs";
 import { projectFiles, scripts } from "./project-files.mjs";
 import { available, run } from "./process.mjs";
+import { requireProfileRuntime } from "./profiles.mjs";
 import { run as runCommand } from "./integrations/process.mjs";
 import { installProject } from "./install-state.mjs";
 import { projectScripts, runScripts, verifyProject } from "./verification.mjs";
@@ -208,6 +209,7 @@ function printNextSteps(root, plan, skills) {
 }
 
 export async function adopt(directory, profile, options) {
+	if (!options.dryRun) requireProfileRuntime(profile);
 	const root = realpathSync(resolve(directory));
 	const quality = await import("./quality.mjs");
 	const plan = adoptionPlan(root, profile, options, quality);

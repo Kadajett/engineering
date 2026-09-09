@@ -1,11 +1,12 @@
 import { realpath, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import { createHash } from "node:crypto";
 import { inspect, projectEnvironment, run } from "./integrations/process.mjs";
 import { entry, markers, preflight, text } from "./integrations/preflight.mjs";
 import { toolStatus } from "./integrations/tools.mjs";
 import { generatedExclusions } from "./quality/files.mjs";
 import { safePath } from "./files.mjs";
+import { projectSlug } from "./generation-names.mjs";
 
 export { toolStatus, installMissingTools } from "./integrations/tools.mjs";
 
@@ -92,7 +93,19 @@ function beadsResult(state, installed) {
 async function integrateBeads(root, state, hooks, env) {
 	if (!state) return { status: "disabled" };
 	if (!state.initialized)
-		await run("bd", ["init", "--non-interactive", "--skip-agents", "--skip-hooks"], root, env);
+		await run(
+			"bd",
+			[
+				"init",
+				"--prefix",
+				projectSlug(basename(root)),
+				"--non-interactive",
+				"--skip-agents",
+				"--skip-hooks",
+			],
+			root,
+			env,
+		);
 	const installed = await beadsHooksInstalled(hooks);
 	if (!installed) await run("bd", ["hooks", "install", "--chain"], root, env);
 	await orderCheckoutHooks(hooks);

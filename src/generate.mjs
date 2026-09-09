@@ -4,11 +4,46 @@ import { basename, dirname, join, resolve } from "node:path";
 import { recoverTemplateInstall } from "./generation-compatibility.mjs";
 import { applyProjectName, generationName, requireEmptyDestination } from "./generation-names.mjs";
 import { displayCommand, run } from "./process.mjs";
+import { requireProfileRuntime } from "./profiles.mjs";
 import { selectSkills } from "./skills/catalog.mjs";
+
+function tuiArguments(forwarded) {
+	let template = "core";
+	let selected = false;
+	let verbose = false;
+	for (let index = 0; index < forwarded.length; index++) {
+		const arg = forwarded[index];
+		if (arg === "--verbose" || arg === "-v") {
+			verbose = true;
+			continue;
+		}
+		const match = /^(?:--template|-t)(?:=(.*))?$/.exec(arg);
+		if (!match || selected)
+			throw new Error(
+				"OpenTUI accepts one --template core/react/solid choice and --verbose; git and install safeguards cannot be overridden.",
+			);
+		template = match[1] ?? forwarded[++index];
+		if (!["core", "react", "solid"].includes(template))
+			throw new Error("OpenTUI template must be core, react, or solid.");
+		selected = true;
+	}
+	return [
+		"{target}",
+		"--template",
+		template,
+		"--no-git",
+		"--no-install",
+		...(verbose ? ["--verbose"] : []),
+	];
+}
 
 export function generatorCommand(profile, target, forwarded = []) {
 	if (!profile.generator)
 		throw new Error(`${profile.id} is adoption-only; select a generator or use adopt`);
+	if (profile.generator.package.startsWith("create-tui@")) {
+		const args = tuiArguments(forwarded).map((arg) => (arg === "{target}" ? target : arg));
+		return ["npx", "--yes", profile.generator.package, ...args];
+	}
 	if (profile.generator.package.startsWith("create-cloudflare@")) {
 		if (forwarded.some((arg) => /^--(?:no-)?(?:deploy|open)(?:[.=]|$)/.test(arg))) {
 			throw new Error(
@@ -46,7 +81,7 @@ export function explainCreate(profile, target, options) {
 	}
 	console.log(`${profile.label}: ${profile.description}`);
 	for (const warning of profile.warnings) console.log(`Warning: ${warning}`);
-	const name = generationName(profile, target, options.name);
+	const name = generationName(target, options.name);
 	const command = generatorCommand(profile, name, options.forwarded);
 	console.log(`Directory: ${dirname(target)}`);
 	if (name !== basename(target))
@@ -54,18 +89,18 @@ export function explainCreate(profile, target, options) {
 	if (options.name !== undefined) console.log(`Display name: ${options.name}`);
 	console.log(displayCommand(command));
 	console.log(
-		"Then: install portable engineering package, preserve app tooling, add policy config/CI and enabled local integrations.",
+		"Then we'll add your checks, agent skills, and other enabled tools while keeping the app's own setup.",
 	);
 	console.log(
 		options.baseline
-			? `Initial inherited baseline: ${options.reason}`
-			: "No baseline captured; new violations fail.",
+			? `Record existing quality issues with this reason: ${options.reason}`
+			: "Don't create a baseline; check the starter against your usual limits.",
 	);
 	if (options.skills !== false)
 		console.log(
 			`Automatic skills: ${selectSkills({}, profile.id)
 				.map((skill) => skill.name)
-				.join(", ")}. Library selection is finalized from the generated dependencies.`,
+				.join(", ")}. We'll check the generated dependencies for any other matching skills.`,
 		);
 	return command;
 }
@@ -109,17 +144,28 @@ function runGenerator(profile, command, root, cwd) {
 	throw new Error(`${command[0]} exited ${result.status ?? result.signal}; nothing adopted`);
 }
 
+function moveStagedProject(root, generatedRoot, stagingParent) {
+	if (!stagingParent) return;
+	requireEmptyDestination(root);
+	// POSIX rename replaces an empty directory atomically, but refuses a nonempty one.
+	renameSync(generatedRoot, root);
+	rmdirSync(stagingParent);
+}
+
 export function generate(profile, destination, options) {
 	const root = resolve(destination);
 	if (basename(root).startsWith("-")) throw new Error("Project directory cannot start with a dash");
 	requireEmptyDestination(root);
 	const command = explainCreate(profile, root, options);
 	if (options.dryRun) return { root, generator: command };
-	const name = generationName(profile, root, options.name);
+	requireProfileRuntime(profile);
+	const name = generationName(root, options.name);
 	command[2] = pinGenerator(command[2]);
 	mkdirSync(dirname(root), { recursive: true });
 	const stagingParent =
-		name === basename(root) ? null : mkdtempSync(join(dirname(root), ".engineering-create-"));
+		name === basename(root) && !profile.generator.package.startsWith("create-tui@")
+			? null
+			: mkdtempSync(join(dirname(root), ".engineering-create-"));
 	const cwd = stagingParent ?? dirname(root);
 	const generatedRoot = stagingParent ? join(stagingParent, name) : root;
 	try {
@@ -129,12 +175,7 @@ export function generate(profile, destination, options) {
 			throw new Error(`Generator did not create ${generatedRoot}/package.json; nothing adopted`);
 		}
 		applyProjectName(generatedRoot, profile, name, options.name);
-		if (stagingParent) {
-			requireEmptyDestination(root);
-			// POSIX rename replaces an empty directory atomically, but refuses a nonempty one.
-			renameSync(generatedRoot, root);
-			rmdirSync(stagingParent);
-		}
+		moveStagedProject(root, generatedRoot, stagingParent);
 	} catch (error) {
 		throw new Error(
 			`${error.message}\nGenerated work was not deleted; inspect ${generatedRoot} and destination ${root}. Nothing adopted.`,
