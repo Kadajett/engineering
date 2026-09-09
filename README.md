@@ -32,8 +32,10 @@ engineering setup
 ## Create a project
 
 ```bash
-engineering create my-app                  # choose a project type
-engineering create hono-node my-api        # or choose directly
+engineering create                        # choose a type, then enter a project name
+engineering create hono-node              # asks for the project name
+engineering create hono-node --name "My API" # creates ./my-api
+engineering create hono-node my-api        # name supplied: no name prompt
 engineering create react-vite my-web
 engineering create next my-site
 engineering create opentui my-terminal-app # requires Bun
@@ -41,6 +43,8 @@ engineering create workers-ai ./MyChat --name "My Chat" --open vscode
 ```
 
 "engineering" runs the real upstream generator, installs the project's dependencies, and adds its quality configuration, agent skills, and CI. It also sets up Beads and a code-only Graphify graph unless you turn them off. Finally, it runs the available native checks and its own quality checks, then shows how to start the app.
+
+A supplied positional name is the destination folder under your current directory. A prompted name or `--name` without a destination becomes a lowercase, hyphenated child folder. Explicit paths still work; use `--name` alongside a path when the display name should differ. Unattended creation needs both the profile and name; nothing silently defaults to the current directory.
 
 The OpenTUI starter uses **Bun 1.3.0+**, which you need to [install separately](https://bun.sh/docs/installation). "engineering" doesn't install it for you. It defaults to TypeScript Core, with React and Solid options available in the [catalog](CATALOG.md#opentui).
 
@@ -67,7 +71,7 @@ Skills are on by default—there's no extra setup command to remember. Every pro
 
 The catalog uses reviewed sources and pinned revisions. If a library has no verified match, "engineering" says so rather than pretending it has library-specific guidance.
 
-Existing skills are reused where possible, and your user-level skill directories are left alone. Missing skills are fetched and linked into the project's shared/Codex, Claude, Pi, and OMP directories. Local links stay out of Git; `.engineering/skills.json` records the sources another machine can use.
+Existing project skills are reused, and user-level collections are left alone. Local skills are copied into an engineering-owned cache before linking, so a Claude plugin update can remove its old version without breaking projects. Missing skills are fetched at pinned revisions without checking out an entire monorepo. Shared/Codex, Claude, Pi, and OMP links stay out of Git; `.engineering/skills.json` records restoration sources and managed-link ownership.
 
 After cloning a generated project or changing its dependencies, run this with the project's package manager:
 
@@ -87,19 +91,31 @@ Start with native Cloudflare logs and traces. AI Gateway remains a choice, and S
 
 For an older native `env.AI` project without a stored profile, run `engineering skills . --profile workers-ai`. This refreshes guidance without adopting the app or changing its baseline.
 
+## Beads in every agent
+
+Claude Code and Codex keep their native Beads setup. Pi reads the root `AGENTS.md`; OMP imports it through `.omp/AGENTS.md`. Both receive native links to the shared Beads skill, without enabling foreign providers or changing global configuration. The workflow is explicit: run `bd prime` and `bd ready --json` at startup and after compaction, claim work before editing, and save blockers and handoff notes before stopping. Close a bead only after its acceptance checks pass.
+
+Beads is the durable record. OMP's `todo` and `task`/`hub`, and other agents' session plans, remain useful for live coordination but don't replace it. A project-local `.beads/PRIME.md` keeps native hook guidance consistent with that distinction; existing custom primers are preserved. Stored memories remain available through `bd prime --export --memories-only`.
+
+## Testing defaults
+
+New projects keep upstream test runners and configuration. Where none exists, ordinary JS/TS starters get Vitest and OpenTUI gets Bun's native runner. Workers without an upstream test setup get runtime-independent unit tests; testing bindings still requires Cloudflare's runtime integration.
+
+The `test` command is strict. For added defaults, `test:ci` discovers tests using the runner and reports an empty suite explicitly—no placeholder tests or coverage claims. Once tests exist, their failures fail setup and CI. Known one-shot upstream test commands run automatically; a Vitest watcher gets a separate one-shot alias without replacing the original script. Unknown scripts remain manual.
+
 ## Bring an existing project
 
 ```bash
 engineering adopt . --profile generic
 ```
 
-Your scripts, framework configuration, and application code stay yours. Adoption adds the engineering commands and runs the available native checks. You should still run your application tests: "engineering" doesn't assume an arbitrary `test` script exits rather than starting a watcher.
+Your scripts, framework configuration, and application code stay yours. Adoption adds engineering commands and runs native checks plus recognized one-shot tests. It doesn't install a new runner into an existing project or launch an arbitrary test watcher; any unrecognized test command still needs your review.
 
 A few useful options:
 
 | Option | What it does |
 | --- | --- |
-| `--name "My App"` | Uses an application name different from the destination directory. |
+| `--name "My App"` | Creates `./my-app` when no destination is supplied; otherwise sets the application name separately. |
 | `--open vscode` | Opens the workspace while the final checks finish. |
 | `--no-baseline` | Skips the baseline question and accepts no new exceptions. |
 | `--baseline --reason "..."` | Saves the starter's existing issues with your approval reason, after native checks pass. |

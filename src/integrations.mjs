@@ -7,12 +7,21 @@ import { toolStatus } from "./integrations/tools.mjs";
 import { generatedExclusions } from "./quality/files.mjs";
 import { safePath } from "./files.mjs";
 import { projectSlug } from "./generation-names.mjs";
+import { installBeadsAgents } from "./integrations/beads-agents.mjs";
 
 export { toolStatus, installMissingTools } from "./integrations/tools.mjs";
 
 const gitHooks = ["pre-commit", "post-merge", "pre-push", "post-checkout", "prepare-commit-msg"];
-const ignoreBegin = "# BEGIN ENGINEERING GRAPHIFY";
-const ignoreEnd = "# END ENGINEERING GRAPHIFY";
+function migrateIgnores(current, lines) {
+	const begin = "# BEGIN ENGINEERING GRAPHIFY";
+	const end = "# END ENGINEERING GRAPHIFY";
+	if (!current.includes(begin)) return current;
+	const start = current.indexOf(begin);
+	const finish = current.indexOf(end) + end.length;
+	const block = current.slice(start, finish).split(/\r?\n/);
+	const keep = block.filter((line) => !lines.includes(line));
+	return current.slice(0, start) + (keep.length > 2 ? keep.join("\n") : "") + current.slice(finish);
+}
 const graphExcludes = [
 	".beads/",
 	".engineering/",
@@ -36,21 +45,25 @@ const gitExcludes = [
 	"/graphify-out/graph.html",
 ];
 
-export async function appendIgnores(root, filename, lines) {
+export async function appendIgnores(root, filename, lines, category = "GRAPHIFY") {
+	if (!["GRAPHIFY", "SKILLS", "PROJECT"].includes(category))
+		throw new Error(`Unknown engineering ignore category: ${category}`);
 	const path = safePath(root, filename);
-	const current = await text(path);
-	markers(current, ignoreBegin, ignoreEnd, path);
+	const original = await text(path);
+	for (const name of ["GRAPHIFY", "SKILLS", "PROJECT"])
+		markers(original, `# BEGIN ENGINEERING ${name}`, `# END ENGINEERING ${name}`, path);
+	const current = category === "GRAPHIFY" ? original : migrateIgnores(original, lines);
+	const begin = `# BEGIN ENGINEERING ${category}`;
+	const end = `# END ENGINEERING ${category}`;
 	const existing = new Set(current.split(/\r?\n/));
 	const missing = lines.filter((line) => !existing.has(line));
-	if (!missing.length) return;
-	if (current.includes(ignoreBegin)) {
-		await writeFile(path, current.replace(ignoreEnd, `${missing.join("\n")}\n${ignoreEnd}`));
-		return;
+	let next = current;
+	if (missing.length) {
+		next = current.includes(begin)
+			? current.replace(end, `${missing.join("\n")}\n${end}`)
+			: `${current}${current && !current.endsWith("\n") ? "\n" : ""}\n${begin}\n${missing.join("\n")}\n${end}\n`;
 	}
-	await writeFile(
-		path,
-		`${current}${current && !current.endsWith("\n") ? "\n" : ""}\n${ignoreBegin}\n${missing.join("\n")}\n${ignoreEnd}\n`,
-	);
+	if (next !== original) await writeFile(path, next);
 }
 
 async function orderCheckoutHooks(hooks) {
@@ -111,6 +124,7 @@ async function integrateBeads(root, state, hooks, env) {
 	await orderCheckoutHooks(hooks);
 	if (!state.claude) await run("bd", ["setup", "claude"], root, env);
 	if (!state.codex) await run("bd", ["setup", "codex"], root, env);
+	installBeadsAgents(root);
 	return beadsResult(state, installed);
 }
 

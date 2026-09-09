@@ -31,10 +31,15 @@ test(
 		const issue = JSON.parse(
 			execFileSync("bd", ["create", "Keep this issue", "--type", "task", "--json"], options),
 		);
+		execFileSync("bd", ["remember", "Keep the integration memory"], options);
+		const memories = execFileSync("bd", ["prime", "--export", "--memories-only"], options);
+		assert.ok(memories.includes("Keep the integration memory"));
+		writeFileSync(join(root, ".beads/PRIME.md"), "Custom project primer\n");
 		await integrate(root, { graphify: false });
 		const [preserved] = JSON.parse(execFileSync("bd", ["show", issue.id, "--json"], options));
 		assert.equal(preserved.id, issue.id);
 		assert.equal(preserved.title, "Keep this issue");
+		assert.equal(execFileSync("bd", ["prime"], options).trim(), "Custom project primer");
 	},
 );
 
@@ -102,5 +107,32 @@ test(
 		symlinkSync(outside, join(root, "graphify-out"));
 		await assert.rejects(() => extractGraph(root), /symlink/);
 		assert.equal(readFileSync(join(outside, "graph.json"), "utf8"), "keep outside data\n");
+	},
+);
+
+test(
+	"Beads preflight preserves conflicting native agent skills before initialization",
+	nativeBeads,
+	async (t) => {
+		const root = repository(t, { ".omp/skills/beads/SKILL.md": "Custom task workflow\n" });
+		await assert.rejects(() => integrate(root, { graphify: false }), /Conflicting Beads skill/);
+		assert.equal(existsSync(join(root, ".beads")), false);
+		assert.equal(
+			readFileSync(join(root, ".omp/skills/beads/SKILL.md"), "utf8"),
+			"Custom task workflow\n",
+		);
+	},
+);
+
+test(
+	"Beads refuses native context symlinks without changing their targets",
+	nativeBeads,
+	async (t) => {
+		const outside = fixture(t, { instructions: "External policy\n" });
+		const root = repository(t, { ".omp/keep": "" });
+		symlinkSync(join(outside, "instructions"), join(root, ".omp/AGENTS.md"));
+		await assert.rejects(() => integrate(root, { graphify: false }), /symlink/);
+		assert.equal(existsSync(join(root, ".beads")), false);
+		assert.equal(readFileSync(join(outside, "instructions"), "utf8"), "External policy\n");
 	},
 );

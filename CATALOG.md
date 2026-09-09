@@ -7,10 +7,10 @@ The commands below were checked against primary documentation and published CLI 
 ## Choose once
 
 ```sh
-# Pick a project type, then answer the upstream generator's questions.
-engineering create my-app
+# Pick a project type and name, then answer upstream-specific questions.
+engineering create
 
-# Or choose the generator directly.
+# Or choose the generator; omit the name to be asked for it.
 engineering create hono-node my-api
 engineering create react-vite my-ui
 engineering create next my-site
@@ -23,6 +23,8 @@ engineering adopt . --profile generic
 ```
 
 Arguments after `--` go to the upstream tool as separate arguments, not as a shell command. Use that tool's options for framework-specific choices. To preview without generating anything, replace `create` with `plan`.
+
+`engineering create hono-node --name "My API"` creates `./my-api`. A positional name such as `my-api` is already a child destination; explicit paths remain supported. Without a supplied name, interactive creation asks for one instead of using the current folder.
 
 ## Profiles and exact upstream invocations
 

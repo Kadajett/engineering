@@ -3,9 +3,9 @@ import { json } from "./files.mjs";
 import { extractGraph } from "./integrations.mjs";
 import { projectEnvironment, run } from "./integrations/process.mjs";
 import { packageRoot } from "./package-install.mjs";
+import { testScripts } from "./testing.mjs";
 
-export function projectScripts(root, profile) {
-	const available = json(root, "package.json").scripts ?? {};
+function requiredScripts(profile, available) {
 	const prepare = profile.prepareScripts ?? ["cf-typegen"].filter((name) => available[name]);
 	const checks =
 		profile.checkScripts ??
@@ -15,6 +15,13 @@ export function projectScripts(root, profile) {
 			throw new Error(`Upstream profile requires missing package script: ${name}`);
 	}
 	return { prepare, checks };
+}
+
+export function projectScripts(root, profile, manifest = json(root, "package.json"), testing) {
+	const available = manifest.scripts ?? {};
+	const { prepare, checks } = requiredScripts(profile, available);
+	const tests = testing?.checks ?? testScripts(available);
+	return { prepare, checks: [...new Set([...checks, ...tests])] };
 }
 
 export async function runScripts(root, manager, names) {
@@ -42,9 +49,7 @@ export async function verifyProject(root, profile, plan, options) {
 	const native = () =>
 		stages.run("Native checks", async () => {
 			if (!plan.scripts.checks.length)
-				console.log(
-					"No native check/lint/build scripts declared; framework tests remain project-specific.",
-				);
+				console.log("No native check/lint/build or known one-shot test scripts declared.");
 			await runScripts(root, plan.manager, plan.scripts.checks);
 		});
 	const graph = () =>

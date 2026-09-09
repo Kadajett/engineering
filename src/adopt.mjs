@@ -14,6 +14,7 @@ import { installProject } from "./install-state.mjs";
 import { projectScripts, runScripts, verifyProject } from "./verification.mjs";
 import { Stages } from "./stages.mjs";
 import { setupSkills, skillPlan } from "./skills.mjs";
+import { testingPlan } from "./testing.mjs";
 
 export async function prepareTools(options) {
 	if (options.installTools) await installMissingTools();
@@ -98,9 +99,11 @@ function adoptionPlan(root, profile, options, quality) {
 	const config = configured ? quality.readConfig(root) : quality.makeConfig(root, profile);
 	if (config.profile !== profile.id)
 		throw new Error(`Existing policy profile is ${config.profile}`);
-	const nativeScripts = projectScripts(root, profile);
+	const testing = testingPlan(root, manifest, profile, options);
+	const nextManifest = mergedManifest(testing.manifest);
+	const nativeScripts = projectScripts(root, profile, nextManifest, testing);
 	const files = projectFiles(root, profile, manager, { ...options, nativeScripts });
-	const nextManifest = mergedManifest(manifest);
+	for (const [name, content] of testing.files) files.set(name, content);
 	safePath(root, ".engineering/vendor");
 	safePath(root, ".engineering/baseline.json");
 	safePath(root, ".gitignore");
@@ -112,6 +115,7 @@ function adoptionPlan(root, profile, options, quality) {
 		files,
 		nextManifest,
 		configured,
+		testing,
 		scripts: nativeScripts,
 	};
 }
@@ -165,6 +169,8 @@ function printPlan(root, profile, plan, options) {
 				open: options.open ?? null,
 				preparation: plan.scripts.prepare,
 				nativeChecks: plan.scripts.checks,
+				testing: { runner: plan.testing.runner, notes: plan.testing.notes },
+				manifest: plan.nextManifest,
 			},
 			null,
 			2,
@@ -176,11 +182,12 @@ async function applyPlan(root, profile, plan, options) {
 	const { stages } = options;
 	await stages.run("Project configuration", async () => {
 		saveSetup(root, plan, profile, options);
-		await appendIgnores(root, ".gitignore", [
-			"!/.engineering/",
-			"!/.engineering/vendor/",
-			"!/.engineering/vendor/*.tgz",
-		]);
+		await appendIgnores(
+			root,
+			".gitignore",
+			["!/.engineering/", "!/.engineering/vendor/", "!/.engineering/vendor/*.tgz"],
+			"PROJECT",
+		);
 	});
 	await stages.run("Dependencies", () => installProject(root, plan.manager));
 	await stages.run("Type generation", () => runScripts(root, plan.manager, plan.scripts.prepare));
@@ -203,6 +210,9 @@ function printNextSteps(root, plan, skills) {
 	console.log(`\nProject ready: ${root}`);
 	if (!skills.disabled)
 		console.log(`${skills.skills.length} agent skills available automatically.`);
+	for (const note of plan.testing.notes) console.log(note);
+	if (plan.testing.checks.length)
+		console.log(`Run tests: ${plan.manager.name} run ${plan.testing.checks[0]}`);
 	const available = plan.nextManifest.scripts;
 	const start = available.dev ? "dev" : available.start ? "start" : null;
 	if (start) console.log(`In that directory, start the app: ${plan.manager.name} run ${start}`);

@@ -79,10 +79,9 @@ export function usage() {
 
 Commands:
   list                                      Browse the available project types
-  create [profile] <directory> [-- flags]     Create an app and set up your tools
-  create <directory> --generator pkg         Use another npm project generator
+  create [profile] [name]                    Create an app; ask for anything omitted
   adopt [directory] --profile generic        Add your tools to an existing project
-  plan <profile> <directory>                 See what would happen, without changes
+  plan [profile] [name]                      Preview creation without making changes
   skills [directory]                        Set up or restore the project's skills
   check [directory]                         Check the code without changing it
   baseline [directory] --accept --reason X   Remember approved existing issues
@@ -91,7 +90,7 @@ Commands:
   setup                                     Install the missing tools
 
 Create/adopt options:
-  --name NAME            Give the app a different name from its folder (create only)
+  --name NAME            Set the app name; default to a matching child folder
   --open vscode          Open VS Code while the last checks run
   --baseline --reason X  Remember existing issues after the native checks pass
   --no-baseline          Don't create a baseline or ask about one
@@ -102,8 +101,18 @@ Create/adopt options:
   --allow-deprecated     Allow a legacy Create React App project
   --dry-run              Show the plan without changing files or opening an editor
 
-Try: engineering create opentui my-terminal-app
-Or:  engineering create my-app
+Start: engineering create
+Or:    engineering create react-vite MyApp
+
+Advanced creation:
+  create --name "My App" --profile react-vite  Derive the folder my-app
+  create react-vite ./web --name "My App"     Keep a separate folder and display name
+  create my-app --generator pkg              Use another npm project generator
+  create react-vite .                        Use the current directory only if empty
+
+A known profile by itself asks for a name. Other names ask for a profile;
+--profile selects one directly. Explicit paths keep their destination.
+Without a terminal, pass the name and profile; previews always require a name.
 
 Some starters come with code that doesn't meet your limits. In an interactive
 terminal, we'll ask whether to remember those issues in a baseline. Without

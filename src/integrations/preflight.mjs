@@ -1,6 +1,7 @@
 import { lstat, readFile, realpath, readdir } from "node:fs/promises";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { inspect, probe } from "./process.mjs";
+import { beadsAgentPlan } from "./beads-agents.mjs";
 
 export async function entry(path) {
 	try {
@@ -122,6 +123,7 @@ async function beadsPreflight(root, env) {
 	for (const path of [".claude/settings.json", ".claude/settings.local.json", ".codex/hooks.json"])
 		await jsonHooks(join(root, path));
 	await safeTree(root, join(root, ".agents/skills/beads"));
+	beadsAgentPlan(root);
 	const config = await text(join(root, ".codex/config.toml"));
 	if (/^\s*(?:codex_hooks|hooks)\s*=\s*false\b/m.test(config))
 		throw new Error(

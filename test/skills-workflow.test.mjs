@@ -7,6 +7,12 @@ import { setupSkills } from "../src/skills.mjs";
 import { fixture } from "./fixture.mjs";
 
 function localSkills(t, names) {
+	const previous = process.env.XDG_CACHE_HOME;
+	process.env.XDG_CACHE_HOME = fixture(t, {});
+	t.after(() => {
+		if (previous === undefined) delete process.env.XDG_CACHE_HOME;
+		else process.env.XDG_CACHE_HOME = previous;
+	});
 	return fixture(
 		t,
 		Object.fromEntries(
@@ -25,12 +31,24 @@ function contents(root, path) {
 }
 
 test("default skill setup exposes local guidance and records portable, idempotent state", async (t) => {
-	const root = fixture(t, { "package.json": "{}", "AGENTS.md": "Keep my project rules.\n" });
+	const native =
+		"<!-- engineering:beads:start -->\nKeep native beads workflow.\n<!-- engineering:beads:end -->\n";
+	const root = fixture(t, {
+		"package.json": "{}",
+		"AGENTS.md": "Keep my project rules.\n",
+		".omp/AGENTS.md": native,
+		".pi/AGENTS.md": native,
+		".agents/skills/beads/SKILL.md": "Keep native beads skill.\n",
+	});
 	const local = localSkills(t, baseline);
 	const options = { skillsDirs: [local] };
 	await setupSkills(root, "generic", options);
 	assert.match(contents(root, ".agents/skills/tdd/SKILL.md"), /Preserve my tdd guidance/);
 	assert.match(contents(root, "AGENTS.md"), /^Keep my project rules/);
+	for (const directory of [".omp", ".pi"]) {
+		assert.equal(contents(root, `${directory}/AGENTS.md`).startsWith(native), true);
+	}
+	assert.equal(contents(root, ".agents/skills/beads/SKILL.md"), "Keep native beads skill.\n");
 	const state = contents(root, ".engineering/skills.json");
 	assert.equal(state.includes(local), false);
 	assert.equal(state.includes(root), false);

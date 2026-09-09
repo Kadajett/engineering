@@ -26,15 +26,15 @@ Sources include [Matt Pocock](https://github.com/mattpocock/skills), [Cloudflare
 
 ### Reuse and portability
 
-A valid skill already in the project takes precedence. Otherwise, the installer looks in your `--skills-dir` locations, shared/user agent skill directories, and registered Claude plugin installations. It reads those sources without changing or upgrading them. Missing skills come from the catalog's pinned public repositories and are cached in `${XDG_CACHE_HOME:-$HOME/.cache}/kadajett-engineering/skills-v1`.
+A valid skill directory already in the project takes precedence. Otherwise, the installer looks in your `--skills-dir` locations, shared/user agent skill directories, and registered Claude plugins. Local content is validated and snapshotted into an engineering-owned content-addressed cache; it never links a project directly into a versioned plugin installation that an upgrade can remove.
 
-The cache keeps the full upstream repository so linked references remain available, and checks its contents against the pinned Git tree. Fetching a skill doesn't execute repository code or install scripts, enable plugins or MCP servers, or call a model.
+Missing skills use the catalog's pinned public repositories. `${XDG_CACHE_HOME:-$HOME/.cache}/kadajett-engineering/skills-v2` stores a shallow, blob-filtered Git cache per selected skill and revision. The selected subtree, named repository references, and small Git control files required for integrity checks are materialized. Unrelated application blobs aren't fetched or checked out. Servers that ignore partial-fetch filtering are rejected rather than silently retaining a full clone.
 
-Git repositories sometimes contain broken links unrelated to a skill. The cache preserves unrelated, contained dangling relative links without rewriting their bytes. The selected skill and any symlinked references it uses must still resolve; links escaping the repository and unresolved parent traversals are rejected.
+Selected skills and their referenced links must resolve within the validated source boundary. Source fetching doesn't execute repository code, enable plugins or MCP servers, install application dependencies, or call a model.
 
-Project links go in `.agents/skills`, `.claude/skills`, `.pi/skills`, and `.omp/skills` for shared/Codex, Claude, Pi, and OMP discovery. Other agents that support `.agents/skills` can use it too. Existing directories are kept. Conflicting or dangling links need to be repaired before installation can continue; the installer also refuses destination parent directories that are symlinks.
+Project links go in `.agents/skills`, `.claude/skills`, `.pi/skills`, and `.omp/skills`. Pi loads the root `AGENTS.md`; OMP imports it through a native context file. Existing directories are kept. `engineering skills .` repairs owned dangling links and migrates recognized legacy managed links to durable sources; unrelated or retargeted custom links remain conflicts instead of being overwritten. Symlinked destination parents are refused.
 
-Only the machine-local symlinks are ignored by Git. Commit `.engineering/skills.json`: it records fallback sources and revisions without absolute machine paths, so another developer can restore the skills. Your existing project and local skills remain yours to edit; their contents may differ from the pinned fallback. Refreshing skills keeps any fallback revisions already recorded.
+Commit `.engineering/skills.json`: it records pinned restoration sources, local snapshot digests, and managed-link ownership without absolute machine paths. Local snapshots survive plugin removal, but a clone on another machine can fall back to the recorded upstream revision rather than duplicating a customized local source. Refreshing keeps recorded fallback revisions. Machine-local links use a dedicated `ENGINEERING SKILLS` ignore block; rerunning setup moves skill entries out of old mislabeled Graphify blocks while preserving genuine Graphify and user entries.
 
 ```bash
 engineering skills .                         # restore links after a clone or dependency change
@@ -60,7 +60,10 @@ The [AI Workers guide](AI-WORKERS.md) explains the exact signals and sources. It
 ## One project selection
 
 ```bash
-engineering create my-app                    # choose interactively
+engineering create                           # choose profile, then name
+engineering create hono-node                 # asks for a name
+engineering create hono-node --name "My API"  # creates ./my-api
+engineering create my-app                    # name supplied; choose profile
 engineering plan hono-node my-api            # preview without network access or writes
 engineering create hono-node my-api
 engineering create express my-server -- --no-view --git
@@ -83,6 +86,8 @@ OpenTUI defaults to TypeScript Core and also supports React or Solid through `--
 The upstream generator owns its prompts, dependencies, application structure, and supported options. Arguments after `--` go to it, subject to the built-in C3 and OpenTUI restrictions described in the catalog. Unpinned generator packages and tags are resolved once to an exact npm version, then recorded in `.engineering/state.json`. Already-exact versions don't need that registry lookup. The resulting application's lockfile pins its dependencies. Some generators also install dependencies or create a Git repository and commit.
 
 `--name` lets the app name differ from the destination directory. Every generator uses the same naming rule: turn that name, or the folder name when `--name` is absent, into a lowercase, hyphenated package name. When the generated name differs from your folder, generation runs in a temporary sibling directory, then moves the app to your exact destination before adoption. OpenTUI always uses staging so its generator never offers to delete an existing destination. For Workers AI, "engineering" also updates package and lockfile names, Wrangler names, and the HTML title and heading. HTML names are escaped; the chat implementation stays unchanged. A nonempty destination is never overwritten.
+
+With no destination, a prompted name or `--name` supplies a slugged child directory of the current working directory. A positional name is used as the literal child destination; explicit relative and absolute paths retain their meaning. A standalone known profile selects that profile and asks for a name. Use `--profile` or a `./` path when a project name matches a profile ID. Noninteractive creation requires an explicit name and profile; preview commands never prompt or invent either.
 
 New Beads databases use a safe prefix derived from the folder name too, so spaces and punctuation don't break setup. Beads handles numeric prefixes according to its own naming rules. Existing databases and issue IDs stay unchanged.
 
@@ -123,7 +128,7 @@ Adoption keeps existing scripts and adds `engineering:check`, `engineering:basel
 
 - Workers AI runs `cf-typegen`, then its upstream `check`: `tsc --noEmit && wrangler deploy --dry-run`.
 - Other profiles run `cf-typegen` when present, then available `typecheck`, `type-check`, `check`, `lint`, and `build` scripts. For the current OpenTUI starters, that's `typecheck`.
-- Arbitrary `test` scripts aren't run automatically because they may start watchers. Find and run the application's actual tests separately.
+- Recognized one-shot test scripts run as part of native verification and CI. Vitest watcher scripts receive a separate one-shot alias; existing commands and configs remain intact. Unknown scripts, scripts with lifecycle hooks, and interactive test modes aren't launched automatically.
 
 Conflicting reserved scripts, managed files, or package-manager lockfiles stop adoption rather than being replaced. `--manager npm|pnpm|yarn|bun` chooses a manager only when it agrees with the project's existing declaration and lockfile.
 
@@ -139,7 +144,15 @@ Repeated adoption skips dependency installation only when the recorded manifest 
 
 Type generation and Git/hook setup finish before parallel work starts. Workers AI and OpenTUI have reviewed read-only checks that can run alongside Graphify extraction and the engineering checks. Initial baseline capture waits for native checks and graph extraction. Other profiles run native scripts first, then graph and quality work. All running verification jobs finish before errors are reported. Graphify excludes known generated declarations and build output, while keeping handwritten `.d.ts` files in scope.
 
-Each stage reports its duration and result, followed by total elapsed time. Parallel stage durations won't add up to that total. A successful setup means the configured native and engineering checks passed; it doesn't mean application tests or deployment ran.
+Each stage reports its duration and result, followed by total elapsed time. Parallel stage durations won't add up to that total. A successful setup means the configured native and engineering checks passed. Output distinguishes tests that ran from an empty suite; deployment never runs.
+
+### Testing defaults
+
+Creation preserves upstream test scripts, dependencies, configuration, and versions. If no runner or test setup exists, it adds pinned Vitest for ordinary JavaScript/TypeScript projects, or native `bun test` for OpenTUI. Existing-project adoption never adds a runner. Default Vitest on Workers covers runtime-independent logic only; upstream Cloudflare pool configuration wins when present, and Worker binding tests need that integration.
+
+New defaults expose a strict `test` script and a discovery-aware `test:ci` script backed by `.engineering/test.mjs`. Setup and generated CI run the latter. An empty suite reports **no tests ran**, not coverage; as soon as tests are discovered, the real runner executes them and propagates failures. No example application tests or `passWithNoTests` flags are fabricated.
+
+Vitest discovery loads the project's Vitest/Vite configuration. Bun discovery respects the configured test root and native filename conventions. Existing Vitest watch scripts receive a nonwatching alias; known direct one-shot commands from Node, Bun, Vitest, Jest, Mocha, AVA, TAP, uvu, React Scripts, Playwright, and Cypress are eligible for verification. Shell pipelines, lifecycle-hook wrappers, and unknown commands remain manual rather than being guessed safe.
 
 ## What a project receives
 
@@ -150,6 +163,16 @@ Each stage reports its duration and result, followed by total elapsed time. Para
 - Managed sections in `AGENTS.md` and `CLAUDE.md`, alongside any unrelated instructions already there.
 - `.github/workflows/engineering.yml`: locked dependency installation, the same preparation and native checks, then engineering checks. Existing framework workflows remain. Use `--no-ci` if you don't want a GitHub Actions workflow.
 - Optional Beads database and agent hooks, plus Graphify skills, hooks, and a code graph. Every project has its own state. Beads initialization may create a metadata commit; "engineering" doesn't configure a Git remote.
+
+### Beads across Claude, Codex, Pi, and OMP
+
+Native `bd setup claude` and `bd setup codex` remain responsible for their supported hooks and the shared `.agents/skills/beads` skill. Engineering adds a managed Beads workflow to root `AGENTS.md`, an `.omp/AGENTS.md` import, and relative `.omp/skills/beads` and `.pi/skills/beads` links. Pi already loads root `AGENTS.md`; no unused `.pi/AGENTS.md` scaffold is generated. Existing unrelated context is preserved; conflicting skills and context symlinks stop setup before initialization.
+
+All four agents are instructed to run `bd prime` and `bd ready --json` at startup and after compaction, inspect and atomically claim assigned tasks, record discovered dependencies, and save verification/blocker/next-action notes before handoff. Child tasks have their own ownership; the parent integrates. Session checklists and OMP task/hub messages complement, rather than replace, durable Beads records. `bd close` follows acceptance verification.
+
+Pi and OMP currently have no built-in `bd setup` recipe: their integration uses recognized context and skills, not fabricated lifecycle hooks. Native `.omp/AGENTS.md` shadows root context at the same depth, so its `@../AGENTS.md` import is required to expose the full project policy. Global providers, hooks, authentication, and model settings are unchanged.
+
+When there is no custom `.beads/PRIME.md`, engineering adds a managed project primer so native `bd prime` hooks respect the session-checklist/durable-task distinction. Existing user primers are untouched. The primer points to the root workflow and instructs agents to retrieve memories with `bd prime --export --memories-only`; `--export` is necessary because the project override otherwise takes precedence even over `--memories-only`. Native `--hook-json` framing remains supported.
 
 The archive contains no framework source, per-project baselines, tracking databases, `node_modules`, credentials, or home-directory paths. Updating the source checkout doesn't change packages already installed in other projects. To upgrade them, bump the engineering package version and adopt the new version deliberately. A same-version archive with different contents is rejected. There is no background updater or separate fork of the framework to maintain.
 

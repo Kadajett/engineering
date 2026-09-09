@@ -73,6 +73,14 @@ function managedInstructions(root, plan) {
 				"Read the project skill guidance in AGENTS.md and discover relevant skills in .claude/skills.",
 			),
 		],
+		[
+			".omp/AGENTS.md",
+			managedBlock(
+				text(root, ".omp/AGENTS.md"),
+				"skills",
+				"@../AGENTS.md\n\nDiscover project skills in skills/.",
+			),
+		],
 	]);
 }
 
@@ -80,14 +88,18 @@ function portableSkills(plan, installed) {
 	return {
 		version: 1,
 		profile: plan.profile,
-		skills: installed.skills.map(({ name, repository, revision, path, reason, status }) => ({
-			name,
-			repository,
-			revision,
-			path,
-			reason,
-			resolution: ["project", "local"].includes(status) ? status : "pinned-upstream",
-		})),
+		managedLinks: installed.managedLinks,
+		skills: installed.skills.map(
+			({ name, repository, revision, path, reason, status, localDigest }) => ({
+				name,
+				repository,
+				revision,
+				path,
+				reason,
+				resolution: ["project", "local"].includes(status) ? status : "pinned-upstream",
+				...(localDigest ? { localDigest } : {}),
+			}),
+		),
 		unmatchedPackages: plan.unmatchedPackages,
 		guidance: plan.guidance,
 	};
@@ -117,6 +129,7 @@ export async function setupSkills(directory, profile, options = {}) {
 		root,
 		".gitignore",
 		preview.links.map((path) => `/${path}`),
+		"SKILLS",
 	);
 	const installed = await installSkills(root, plan.skills, options);
 	for (const [path, content] of instructions) save(root, path, content);

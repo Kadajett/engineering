@@ -84,7 +84,7 @@ export function explainCreate(profile, target, options) {
 	for (const warning of profile.warnings) console.log(`Warning: ${warning}`);
 	const name = generationName(target, options.name);
 	const command = generatorCommand(profile, name, options.forwarded);
-	console.log(`Directory: ${dirname(target)}`);
+	console.log(`Project directory: ${target}`);
 	if (name !== basename(target))
 		console.log(`Generate as ${name} in a temporary sibling directory, then move to ${target}.`);
 	if (options.name !== undefined) console.log(`Display name: ${options.name}`);

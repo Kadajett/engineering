@@ -20,7 +20,7 @@ This project uses @kadajett/engineering with the ${profile.id} profile.
 - Keep the project's existing package manager, formatter, linter, and TypeScript module/runtime settings.
 - Tests follow the same complexity, nesting, and parameter limits as app code, but have no function-length limit and may be up to 1000 lines per file. Generated, vendor, and build files are excluded through configuration.
 - Use Graphify to help navigate, then check the source itself. Keep secrets and .env files out of extraction, and ask before using semantic model calls.
-- Use Beads when it's enabled, with this project's own .beads state. Setup isn't permission to add remotes, deploy, or create cloud resources.
+- Setup isn't permission to add remotes, deploy, or create cloud resources.
 - For Cloudflare projects, use the actual Wrangler configuration, generated types, and resource IDs. Bindings belong to this project, not to an example from another app.
 - Prefer functions, immutable data, early returns, and explicit dependencies. Validate data at trust boundaries. Review coverage and duplication yourself; these checks don't measure them.
 
