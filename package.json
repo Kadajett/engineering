@@ -1,6 +1,6 @@
 {
 	"name": "@kadajett/engineering",
-	"version": "0.2.0",
+	"version": "0.3.0",
 	"private": true,
 	"description": "My code quality metrics, linters, and codegraph settings for upstream-generated projects and Workers",
 	"license": "MIT",
@@ -21,6 +21,7 @@
 		"bin",
 		"src",
 		"configs",
+		"docs",
 		"README.md",
 		"CATALOG.md",
 		"LICENSE"

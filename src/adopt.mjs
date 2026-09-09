@@ -12,6 +12,7 @@ import { run as runCommand } from "./integrations/process.mjs";
 import { installProject } from "./install-state.mjs";
 import { projectScripts, runScripts, verifyProject } from "./verification.mjs";
 import { Stages } from "./stages.mjs";
+import { setupSkills, skillPlan } from "./skills.mjs";
 
 export async function prepareTools(options) {
 	if (options.installTools) await installMissingTools();
@@ -126,7 +127,11 @@ function saveSetup(root, plan, profile, options) {
 		profile: profile.id,
 		manager: plan.manager,
 		generator: options.generator ?? plan.state.generator ?? null,
-		integrations: { beads: options.beads, graphify: options.graphify },
+		integrations: {
+			beads: options.beads,
+			graphify: options.graphify,
+			skills: options.skills !== false,
+		},
 		phase: "configured",
 	});
 }
@@ -140,9 +145,18 @@ function printPlan(root, profile, plan, options) {
 				manager: plan.manager,
 				config: plan.config,
 				scripts,
-				files: [...plan.files.keys(), ".gitignore"],
+				files: [
+					...plan.files.keys(),
+					".gitignore",
+					...(options.skills === false ? [] : [".engineering/skills.json"]),
+				],
 				dependency: dependencySpec,
-				integrations: { beads: options.beads, graphify: options.graphify },
+				integrations: {
+					beads: options.beads,
+					graphify: options.graphify,
+					skills: options.skills !== false,
+				},
+				skills: options.skills === false ? [] : skillPlan(root, profile.id).skills,
 				baseline: Boolean(options.baseline),
 				open: options.open ?? null,
 				preparation: plan.scripts.prepare,
@@ -170,6 +184,7 @@ async function applyPlan(root, profile, plan, options) {
 		ensureRepository(root, options);
 		await integrate(root, { beads: options.beads, graphify: options.graphify, deferGraph: true });
 	});
+	const skills = await stages.run("Agent skills", () => setupSkills(root, profile.id, options));
 	if (options.open)
 		await stages.run("VS Code", () =>
 			runCommand("code", ["--new-window", root], root, projectEnvironment(root)),
@@ -177,7 +192,19 @@ async function applyPlan(root, profile, plan, options) {
 	await verifyProject(root, profile, plan, options);
 	const state = json(root, ".engineering/state.json");
 	saveJson(root, ".engineering/state.json", { ...state, phase: "complete" });
-	console.log(`Engineering setup verified: ${root}`);
+	printNextSteps(root, plan, skills);
+}
+
+function printNextSteps(root, plan, skills) {
+	console.log(`\nProject ready: ${root}`);
+	if (!skills.disabled)
+		console.log(`${skills.skills.length} agent skills available automatically.`);
+	const available = plan.nextManifest.scripts;
+	const start = available.dev ? "dev" : available.start ? "start" : null;
+	if (start) console.log(`In that directory, start the app: ${plan.manager.name} run ${start}`);
+	console.log(`Check your changes: ${plan.manager.name} run engineering:check`);
+	if (!skills.disabled)
+		console.log(`After dependency changes: ${plan.manager.name} run engineering:skills`);
 }
 
 export async function adopt(directory, profile, options) {

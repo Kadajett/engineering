@@ -4,6 +4,7 @@ import { basename, dirname, join, resolve } from "node:path";
 import { recoverTemplateInstall } from "./generation-compatibility.mjs";
 import { applyProjectName, generationName, requireEmptyDestination } from "./generation-names.mjs";
 import { displayCommand, run } from "./process.mjs";
+import { selectSkills } from "./skills/catalog.mjs";
 
 export function generatorCommand(profile, target, forwarded = []) {
 	if (!profile.generator)
@@ -60,6 +61,12 @@ export function explainCreate(profile, target, options) {
 			? `Initial inherited baseline: ${options.reason}`
 			: "No baseline captured; new violations fail.",
 	);
+	if (options.skills !== false)
+		console.log(
+			`Automatic skills: ${selectSkills({}, profile.id)
+				.map((skill) => skill.name)
+				.join(", ")}. Library selection is finalized from the generated dependencies.`,
+		);
 	return command;
 }
 

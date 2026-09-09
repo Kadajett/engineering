@@ -8,6 +8,7 @@ import { packageManifest } from "./package-install.mjs";
 import { getProfile, profiles } from "./profiles.mjs";
 import { chooseBaseline } from "./baseline-choice.mjs";
 import { Stages } from "./stages.mjs";
+import { setupSkills } from "./skills.mjs";
 
 function showProfiles() {
 	for (const profile of profiles) {
@@ -108,6 +109,7 @@ async function dispatch(command, targets, options) {
 		throw new Error("Only create/plan accept upstream arguments after --");
 	const root = singleTarget(command, targets);
 	if (command === "adopt") return adopt(root, getProfile(options.profile ?? "generic"), options);
+	if (command === "skills") return setupSkills(root, options.profile, options);
 	if (["check", "baseline", "prune"].includes(command))
 		return qualityCommand(command, root, options);
 	throw new Error(`Unknown command: ${command}`);
@@ -117,8 +119,8 @@ export async function main(args = process.argv.slice(2)) {
 	const { command, targets, options } = parseOptions(args);
 	if (options.version) return console.log(packageManifest.version);
 	if (options.help || command === "help") return console.log(usage());
-	if (options.dryRun && !["create", "adopt", "plan"].includes(command))
-		throw new Error("--dry-run is supported only for create, adopt and plan");
+	if (options.dryRun && !["create", "adopt", "plan", "skills"].includes(command))
+		throw new Error("--dry-run is supported only for create, adopt, plan and skills");
 	if (command === "list") return showProfiles();
 	if (command === "doctor") return console.log(JSON.stringify(await toolStatus(), null, 2));
 	if (command === "setup") return installMissingTools();

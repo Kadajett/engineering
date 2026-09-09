@@ -14,7 +14,12 @@ test("adoption makes its portable dependency trackable despite upstream archive 
 	});
 	const initialized = spawnSync("git", ["init", "-q", root], { encoding: "utf8" });
 	assert.equal(initialized.status, 0, initialized.stderr);
-	await adopt(root, getProfile("generic"), { beads: false, graphify: false, ci: true });
+	await adopt(root, getProfile("generic"), {
+		beads: false,
+		graphify: false,
+		ci: true,
+		skills: false,
+	});
 	const archive = `.engineering/vendor/${archiveName}`;
 	const ignored = spawnSync("git", ["check-ignore", archive], { cwd: root, encoding: "utf8" });
 	assert.equal(ignored.status, 1, ignored.stdout);

@@ -7,8 +7,19 @@ function validateBaseline(options) {
 		throw new Error("Choose --baseline or --no-baseline, not both");
 }
 
+function validateSkillOptions(options, command) {
+	if (
+		(options.skillsDirs.length || options.skills === false) &&
+		!["create", "adopt", "plan", "skills"].includes(command)
+	)
+		throw new Error("Skill options are supported only for create, adopt, plan and skills");
+	if (options.skillsDirs.some((path) => !path.trim()))
+		throw new Error("--skills-dir requires a nonempty directory");
+}
+
 function validateOptions(options, command) {
 	validateBaseline(options);
+	validateSkillOptions(options, command);
 	if (options.open && options.open !== "vscode") throw new Error("--open supports vscode");
 	if (options.name !== undefined && !options.name.trim())
 		throw new Error("--name requires a nonempty application name");
@@ -40,6 +51,8 @@ export function parseOptions(args) {
 			"no-beads": { type: "boolean" },
 			"no-graphify": { type: "boolean" },
 			"no-ci": { type: "boolean" },
+			"no-skills": { type: "boolean" },
+			"skills-dir": { type: "string", multiple: true },
 			"allow-deprecated": { type: "boolean" },
 			"dry-run": { type: "boolean" },
 		},
@@ -51,6 +64,8 @@ export function parseOptions(args) {
 		beads: !values["no-beads"],
 		graphify: !values["no-graphify"],
 		ci: !values["no-ci"],
+		skills: !values["no-skills"],
+		skillsDirs: values["skills-dir"] ?? [],
 		allowDeprecated: Boolean(values["allow-deprecated"]),
 		dryRun: Boolean(values["dry-run"]),
 		noBaseline: Boolean(values["no-baseline"]),
@@ -68,6 +83,7 @@ Commands:
   create <directory> --generator pkg         Use another upstream npm generator
   adopt [directory] --profile generic        Install rules and verify existing code
   plan <profile> <directory>                 Preview without network or writes
+  skills [directory]                        Restore automatic baseline/library skills
   check [directory]                          Read-only policy gate
   baseline [directory] --accept --reason X   Approve initial inherited debt
   prune [directory]                          Reduce resolved allowances only
@@ -81,12 +97,14 @@ Create/adopt options:
   --no-baseline          Explicit zero-debt policy; suppress approval prompt
   --manager npm|pnpm|yarn|bun  Preserve existing manager choices
   --install-tools        Explicitly install missing prerequisites
-  --no-beads --no-graphify --no-ci  Omit selected integrations
+  --no-beads --no-graphify --no-ci --no-skills  Omit selected integrations
+  --skills-dir PATH      Reuse skills from an additional local directory (repeatable)
   --allow-deprecated     Permit legacy Create React App
   --dry-run              Show plan only; never prompt or open the editor
 
 Interactive creation asks about inherited debt before generating anything.
 Non-interactive creation never implicitly approves a baseline.
+Baseline and matching library skills are installed automatically during setup.
 Arguments after -- belong to upstream, except unsafe fixed-template overrides.
 Existing application logic and framework tooling remain upstream-owned.
 `;

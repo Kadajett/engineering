@@ -5,6 +5,7 @@ export const scripts = {
 	"engineering:check": "engineering check",
 	"engineering:baseline": "engineering baseline",
 	"engineering:prune": "engineering prune",
+	"engineering:skills": "engineering skills",
 };
 
 function agentInstructions(profile) {

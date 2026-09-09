@@ -14,6 +14,7 @@ export function run(command, options = {}) {
 		stdio: options.capture ? "pipe" : "inherit",
 		encoding: "utf8",
 		timeout: options.timeout,
+		maxBuffer: options.maxBuffer,
 	});
 	if (result.error) throw result.error;
 	if (result.status !== 0) throw commandError(binary, result);
