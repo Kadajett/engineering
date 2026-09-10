@@ -68,6 +68,7 @@ Skills are on by default—there's no extra setup command to remember. Every pro
 - **Web React / Next.js:** Vercel's React and Next.js best practices.
 - **OpenTUI:** the official OpenTUI skill, including Core, React, and Solid renderers. Terminal React alone doesn't pull in browser-focused React guidance.
 - **Hono, TanStack Start / Router, Clerk:** matching upstream skills and any companion skills they need.
+- **StrykerJS:** the [Stryker skill](https://github.com/Kadajett/stryker-skill), selected by a direct `@stryker-mutator/core` dependency. It covers meaningful survivors, safe execution, and sustained team workflows—not score chasing.
 
 The catalog uses reviewed sources and pinned revisions. If a library has no verified match, "engineering" says so rather than pretending it has library-specific guidance.
 

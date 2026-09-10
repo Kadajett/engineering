@@ -19,10 +19,13 @@ This is the detailed guide to what "engineering" adds, how its checks work, and 
 | Hono packages | Official Hono skill |
 | TanStack React Start / Router | Framework skills and their required core skills |
 | Clerk SDKs | Clerk setup and matching framework/backend guidance |
+| `@stryker-mutator/core` | [Stryker mutation-testing skill](https://github.com/Kadajett/stryker-skill) |
 
 Selection looks at direct dependencies, dev dependencies, optional dependencies, and peers. The actual frontend dependencies take precedence over the profile's default. React used only by OpenTUI doesn't bring in browser-focused Vercel guidance; web dependencies still receive it. Duplicate skills are installed once, and unrelated provider skills are left out. Packages without a verified match are reported. The general skills still apply, but aren't presented as library-specific coverage.
 
 Sources include [Matt Pocock](https://github.com/mattpocock/skills), [Cloudflare](https://github.com/cloudflare/skills), [Vercel](https://github.com/vercel-labs/agent-skills), [OpenTUI](https://github.com/anomalyco/opentui), [Hono](https://github.com/honojs/skills), [TanStack](https://github.com/TanStack/router), and [Clerk](https://github.com/clerk/skills). The skill catalog records reviewed names, paths, and immutable commits rather than picking a popular search result at install time.
+
+The Stryker skill is pinned to a reviewed release and selected only by the exact direct `@stryker-mutator/core` package, not by Vitest alone or an arbitrary package in the Stryker scope. Installing guidance does not run mutation tests, rewrite configuration, lower thresholds, or establish runner compatibility. Its bundled references also cover Stryker.NET and Stryker4s, but this CLI's package-based selection does not adopt standalone .NET/Scala projects; install the portable skill directly for those hosts. [Observed evaluation and compatibility limits](https://github.com/Kadajett/stryker-skill/blob/b1abf81ca5fd577345e1674824d515de120a9f4c/EVALUATION.md).
 
 ### Reuse and portability
 

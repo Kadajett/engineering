@@ -8,12 +8,14 @@ const sources = {
 	clerk: ["clerk/skills", "c77dfc77a4f995673583c520da6630b60a2aa1de"],
 	opentui: ["anomalyco/opentui", "97a20ab24953cb7a08d4ad319fdc59b1f32c55a8"],
 	ai: ["vercel/ai", "45f2b6a5bc06bdb40a847ea961f8d7ca7cd86563"],
+	stryker: ["Kadajett/stryker-skill", "b1abf81ca5fd577345e1674824d515de120a9f4c"],
 };
 
 const definitions = [
 	["matt", "tdd", "skills/engineering/tdd"],
 	["matt", "codebase-design", "skills/engineering/codebase-design"],
 	["matt", "diagnosing-bugs", "skills/engineering/diagnosing-bugs"],
+	["stryker", "stryker"],
 	["cloudflare", "cloudflare"],
 	["cloudflare", "wrangler"],
 	["cloudflare", "workers-best-practices"],
@@ -71,6 +73,7 @@ const router = ["react-router", "router-core"];
 // TanStack requires closures are explicit; references stay in their upstream tree.
 const packageSkills = new Map(
 	Object.entries({
+		"@stryker-mutator/core": ["stryker"],
 		wrangler: workers,
 		"@cloudflare/workers-types": workers,
 		"@cloudflare/vite-plugin": workers,
