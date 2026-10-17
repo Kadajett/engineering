@@ -60,7 +60,9 @@ export function localSkillRoots(explicit = []) {
 
 export function findLocalSkill(selection, roots) {
 	for (const root of roots) {
-		const candidates = [join(root, selection.name), join(root, selection.path)];
+		// A repository-root skill (path ".") is only found under its own name.
+		const nested = selection.path === "." ? [] : [join(root, selection.path)];
+		const candidates = [join(root, selection.name), ...nested];
 		for (const candidate of new Set(candidates)) {
 			if (!stat(candidate)) continue;
 			return validateSkill(candidate, selection.name);

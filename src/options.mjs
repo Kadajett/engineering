@@ -10,13 +10,13 @@ function validateBaseline(options) {
 function validateSetupOptions(options, command) {
 	if (
 		(options.skillsDirs.length || options.skills === false) &&
-		!["create", "adopt", "plan", "skills"].includes(command)
+		!["create", "adopt", "plan", "skills", "grill"].includes(command)
 	)
-		throw new Error("Skill options are supported only for create, adopt, plan and skills");
+		throw new Error("Skill options are supported only for create, adopt, plan, skills and grill");
 	if (options.skillsDirs.some((path) => !path.trim()))
 		throw new Error("--skills-dir requires a nonempty directory");
-	if (options.mutation === false && !["create", "adopt", "plan"].includes(command))
-		throw new Error("--no-mutation is supported only for create, adopt and plan");
+	if (options.mutation === false && !["create", "adopt", "plan", "grill"].includes(command))
+		throw new Error("--no-mutation is supported only for create, adopt, plan and grill");
 }
 
 function validateRecommendationOptions(options, command) {
@@ -29,18 +29,57 @@ function validateRecommendationOptions(options, command) {
 		throw new Error("--catalog requires a nonempty file path");
 }
 
-function validateOptions(options, command) {
-	validateBaseline(options);
-	validateSetupOptions(options, command);
-	validateRecommendationOptions(options, command);
-	if (options.open && options.open !== "vscode") throw new Error("--open supports vscode");
-	if (options.name !== undefined && !options.name.trim())
-		throw new Error("--name requires a nonempty application name");
+function validateCommandScope(options, command) {
+	if (
+		["agent", "model", "plan", "no-build"].some((key) => options[key] !== undefined) &&
+		command !== "grill"
+	)
+		throw new Error("--agent, --model, --plan and --no-build are supported only for grill");
 	if (options.name && !["create", "plan"].includes(command))
 		throw new Error("--name is supported only for create and plan");
 	if (options.open && !["create", "plan", "adopt"].includes(command))
 		throw new Error("--open is supported only for create, plan and adopt");
 }
+
+function validateOptions(options, command) {
+	validateBaseline(options);
+	validateSetupOptions(options, command);
+	validateRecommendationOptions(options, command);
+	validateCommandScope(options, command);
+	if (options.open && options.open !== "vscode") throw new Error("--open supports vscode");
+	if (options.name !== undefined && !options.name.trim())
+		throw new Error("--name requires a nonempty application name");
+}
+
+const OPTION_SCHEMA = {
+	help: { type: "boolean", short: "h" },
+	version: { type: "boolean" },
+	profile: { type: "string" },
+	generator: { type: "string" },
+	manager: { type: "string" },
+	name: { type: "string" },
+	open: { type: "string" },
+	"no-baseline": { type: "boolean" },
+	baseline: { type: "boolean" },
+	reason: { type: "string" },
+	accept: { type: "boolean" },
+	"install-tools": { type: "boolean" },
+	"no-beads": { type: "boolean" },
+	"no-graphify": { type: "boolean" },
+	"no-ci": { type: "boolean" },
+	"no-skills": { type: "boolean" },
+	"no-mutation": { type: "boolean" },
+	"skills-dir": { type: "string", multiple: true },
+	catalog: { type: "string" },
+	json: { type: "boolean" },
+	"include-installed": { type: "boolean" },
+	"allow-deprecated": { type: "boolean" },
+	"dry-run": { type: "boolean" },
+	agent: { type: "string" },
+	model: { type: "string" },
+	plan: { type: "string" },
+	"no-build": { type: "boolean" },
+};
 
 export function parseOptions(args) {
 	const separator = args.indexOf("--");
@@ -48,31 +87,7 @@ export function parseOptions(args) {
 	const { values, positionals } = parseArgs({
 		args: separator < 0 ? args : args.slice(0, separator),
 		allowPositionals: true,
-		options: {
-			help: { type: "boolean", short: "h" },
-			version: { type: "boolean" },
-			profile: { type: "string" },
-			generator: { type: "string" },
-			manager: { type: "string" },
-			name: { type: "string" },
-			open: { type: "string" },
-			"no-baseline": { type: "boolean" },
-			baseline: { type: "boolean" },
-			reason: { type: "string" },
-			accept: { type: "boolean" },
-			"install-tools": { type: "boolean" },
-			"no-beads": { type: "boolean" },
-			"no-graphify": { type: "boolean" },
-			"no-ci": { type: "boolean" },
-			"no-skills": { type: "boolean" },
-			"no-mutation": { type: "boolean" },
-			"skills-dir": { type: "string", multiple: true },
-			catalog: { type: "string" },
-			json: { type: "boolean" },
-			"include-installed": { type: "boolean" },
-			"allow-deprecated": { type: "boolean" },
-			"dry-run": { type: "boolean" },
-		},
+		options: OPTION_SCHEMA,
 	});
 	const options = {
 		...values,
@@ -88,6 +103,7 @@ export function parseOptions(args) {
 		includeInstalled: Boolean(values["include-installed"]),
 		dryRun: Boolean(values["dry-run"]),
 		noBaseline: Boolean(values["no-baseline"]),
+		build: !values["no-build"],
 	};
 	validateOptions(options, positionals[0]);
 	return { command: positionals[0] ?? "help", targets: positionals.slice(1), options };
@@ -102,6 +118,7 @@ Commands:
   plan [profile] [name]                      Preview creation without making changes
   skills [directory]                        Set up or restore the project's skills
   recommend [directory]                     Suggest optional skills without installing
+  grill [prompt] [directory]                Get grilled on new work or a change, then ticket and build it
   check [directory]                         Check the code without changing it
   baseline [directory] --accept --reason X   Remember approved existing issues
   prune [directory]                         Remove allowances for issues you've fixed
@@ -126,6 +143,16 @@ Recommendation options:
   --include-installed    Also show matching favorites already available locally
   --json                 Print the recommendation report as JSON
   --profile PROFILE      Supply project context when no stored profile exists
+
+Grill options:
+  --agent omp|claude|PATH  Agent that grills and builds (default omp)
+  --model MODEL          Model for that agent
+  --plan FILE            Skip the grilling and use a saved plan ({ spec, plan, transcript?, tickets? })
+  --dry-run              Grill, then show what would be created without creating it
+  --no-build             Stop after the tickets instead of starting the build agent
+  With no prompt file, grill asks what to grill you about. An empty or missing directory gets new
+  projects; an existing one is extended. Rerun with the same prompt or topic to resume.
+  Create options like --manager, --no-beads and --baseline pass through to new projects.
 
 Start: engineering create
 Or:    engineering create react-vite MyApp

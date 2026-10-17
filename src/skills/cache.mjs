@@ -121,7 +121,9 @@ function selectedFiles(source, records, selection, materialize = () => {}) {
 	const pending = new Set();
 	const files = [...records.keys()];
 	function include(path, required = true) {
-		const matches = files.filter((name) => name === path || name.startsWith(`${path}/`));
+		const matches = files.filter(
+			(name) => path === "." || name === path || name.startsWith(`${path}/`),
+		);
 		if (!matches.length && required) throw new Error(`Missing skill reference: ${path}`);
 		for (const name of matches) {
 			if (selected.has(name)) continue;

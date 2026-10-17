@@ -58,9 +58,35 @@ See every project type with `engineering list`, or preview a command without dow
 engineering plan workers-ai ./MyChat --name "My Chat"
 ```
 
+## Get grilled before you build
+
+```bash
+engineering grill                                  # asks what to grill you about; works on the current project
+engineering grill ./prompt.md                      # new project, named from the prompt's heading
+engineering grill ./take-home.pdf board --model sonnet --manager bun
+engineering grill ~/Dev/my-app                     # extend an existing project
+engineering grill . --plan /tmp/grill-plan.json    # use a plan an agent already grilled out of you
+```
+
+`grill` is for work you'll have to explain afterward: a take-home, a live-coding prompt, or the next feature in an existing project. Without a prompt file it asks what to grill you about. An agent (OMP by default, or Claude Code with `--agent claude`) then interviews you one question at a time, since each answer changes what's worth asking next. It only asks about decisions that change what gets built or that a reviewer would challenge; it settles small details itself and lists them in the plan. A question is at most three sentences, written by the humanizer skill's rules, with options where they help and the agent's recommended answer. Press Enter to take the recommendation, type an option's number, or answer in your own words; your answer goes to the agent as typed. Say you've had enough and it plans with its recommendations for the rest. It pushes back on vague or risky answers.
+
+A missing or empty directory gets new projects. Any other directory is extended: the agent sees a summary of its files, package.json, README and AGENTS.md, and plans no new projects.
+
+When nothing is left open, it shows the shared understanding. Press Enter to accept it, or type what's wrong and the grilling continues. Then `grill`:
+
+1. Creates the new projects with `engineering create`, if any.
+2. Writes `docs/grill/<topic>/`: SPEC, DECISIONS (each decision with its alternatives and your reason; missing reasons are flagged), TRANSCRIPT, and BUILD (instructions for the build agent).
+3. Has the agent break the plan into vertical-slice tickets in dependency order (TICKETS.md), and creates them as beads with their dependencies. A folder without Beads gets one.
+4. Starts the build agent in your terminal, told to work `bd ready` one ticket at a time, test first, and finish with a TALK-TRACK.md you can walk through. `--no-build` stops before this.
+
+Each step is saved in `.engineering/grill/<topic>.json`, so rerunning with the same prompt or topic resumes where it stopped. `--plan FILE` skips the grilling; the `engineering-grill` agent skill uses it after grilling you in chat.
+
+This is the one command that calls a model, through the agent CLI you already use; the rest of "engineering" stays model-free. The agent can only plan project types `engineering` knows, in plain folders. Create options such as `--manager bun`, `--no-beads` and `--baseline --reason "..."` pass through to new projects.
+
+
 ## Skills that fit the project
 
-Skills are on by default—there's no extra setup command to remember. Every project starts with Matt Pocock's **tdd**, **codebase-design**, and **diagnosing-bugs** skills. The project's dependencies determine which library skills to add:
+Skills are on by default—there's no extra setup command to remember. Every project starts with Matt Pocock's **tdd**, **codebase-design**, and **diagnosing-bugs** skills, plus blader's **humanizer** so agent-written prose reads plainly. The project's dependencies determine which library skills to add:
 
 - **Cloudflare Workers:** official Cloudflare, Wrangler, and Workers best practices.
 - **Cloudflare Agents SDK:** Agents SDK and Durable Objects guidance.

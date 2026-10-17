@@ -9,6 +9,7 @@ const sources = {
 	opentui: ["anomalyco/opentui", "97a20ab24953cb7a08d4ad319fdc59b1f32c55a8"],
 	ai: ["vercel/ai", "45f2b6a5bc06bdb40a847ea961f8d7ca7cd86563"],
 	stryker: ["Kadajett/stryker-skill", "b1abf81ca5fd577345e1674824d515de120a9f4c"],
+	humanizer: ["blader/humanizer", "8c307f367c91bd974002f10f2be2965d642c13df"],
 };
 
 const definitions = [
@@ -16,6 +17,8 @@ const definitions = [
 	["matt", "codebase-design", "skills/engineering/codebase-design"],
 	["matt", "diagnosing-bugs", "skills/engineering/diagnosing-bugs"],
 	["stryker", "stryker"],
+	// The skill is the repository root: "." selects the whole (small) repository.
+	["humanizer", "humanizer", "."],
 	["cloudflare", "cloudflare"],
 	["cloudflare", "wrangler"],
 	["cloudflare", "workers-best-practices"],
@@ -48,9 +51,13 @@ const catalog = new Map(
 	}),
 );
 
-// These disciplines are self-contained; tdd consults codebase-design. The separate
-// code-review workflow requires interactive issue-tracker setup, so is not a default.
-const baseline = ["tdd", "codebase-design", "diagnosing-bugs"];
+/** One catalog entry by name, for callers that need a specific skill (grill loads humanizer). */
+export const catalogSkill = (name) => catalog.get(name);
+
+// These disciplines are self-contained; tdd consults codebase-design, and humanizer keeps
+// agent-written prose plain. The separate code-review workflow requires interactive
+// issue-tracker setup, so is not a default.
+const baseline = ["tdd", "codebase-design", "diagnosing-bugs", "humanizer"];
 const workers = ["cloudflare", "wrangler", "workers-best-practices"];
 const react = ["vercel-react-best-practices"];
 const browserReactPackages = new Set([

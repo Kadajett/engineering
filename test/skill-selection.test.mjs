@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { selectSkills, unmatchedPackages } from "../src/skills/catalog.mjs";
 
-const baseline = ["codebase-design", "diagnosing-bugs", "tdd"];
+const baseline = ["codebase-design", "diagnosing-bugs", "humanizer", "tdd"];
 
 function names(manifest, profile = "generic") {
 	return selectSkills(manifest, profile).map((skill) => skill.name);

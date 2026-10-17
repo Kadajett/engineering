@@ -32,7 +32,8 @@ export function validateSelection(selection) {
 		throw new Error(`Skill repository must be a public HTTPS Git URL: ${selection.repository}`);
 	if (!/^[a-f0-9]{40}$/.test(selection.revision))
 		throw new Error(`Skill revision must be an exact commit: ${selection.revision}`);
-	relativeSkillPath(selection.path);
+	// "." means the skill is the repository root.
+	if (selection.path !== ".") relativeSkillPath(selection.path);
 }
 
 export function safeParents(path, create = false) {

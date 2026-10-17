@@ -24,7 +24,7 @@ function localSkills(t, names) {
 	);
 }
 
-const baseline = ["tdd", "codebase-design", "diagnosing-bugs"];
+const baseline = ["tdd", "codebase-design", "diagnosing-bugs", "humanizer"];
 
 function contents(root, path) {
 	return readFileSync(join(root, path), "utf8");

@@ -6,7 +6,7 @@ This is the detailed guide to what "engineering" adds, how its checks work, and 
 
 ## Automatic agent skills
 
-`create` and `adopt` install skills by default. Every project gets Matt Pocock's **tdd**, **codebase-design**, and **diagnosing-bugs** guidance, then any verified library skills that match its dependencies. Installing these skills doesn't run their interactive setup or issue-tracker workflows.
+`create` and `adopt` install skills by default. Every project gets Matt Pocock's **tdd**, **codebase-design**, and **diagnosing-bugs** guidance and blader's **humanizer** for plain prose, then any verified library skills that match its dependencies. Installing these skills doesn't run their interactive setup or issue-tracker workflows.
 
 | Project dependency or profile | Skills added |
 | --- | --- |
@@ -175,6 +175,26 @@ engineering create my-other-app --generator create-vite@latest -- --template van
 ```
 
 A custom generator receives the target as its first argument. If its command needs a different layout, run the official command yourself, then adopt the result. Choosing a generator means running that package's third-party code, so review its documentation and pin a version when repeatability matters. The built-in C3 profiles prevent no-deploy/no-open options from being overridden; arbitrary custom generators have their own behavior and aren't sandboxed by "engineering".
+
+## Grill, ticket and build
+
+```bash
+engineering grill [prompt.md|.txt|.pdf] [directory] [--agent omp|claude|PATH] [--model MODEL] [--plan FILE] [--no-build] [--dry-run]
+```
+
+**What to grill about.** A prompt file supplies the description; a `.pdf` needs `pdftotext`. Without one, `grill` asks "What should I grill you about?" in the terminal (or takes `spec` from `--plan`). A lone argument that's an existing file is the prompt; a directory, or any argument alongside `--plan`, is the directory.
+
+**Where.** The directory defaults to a new folder named from the prompt's heading when a prompt file is given, and to the current directory otherwise. A missing or empty directory is a new project; anything else is extended.
+
+**The conversation.** Each turn, `grill` sends the agent the description, the transcript so far, the humanizer skill's rules for its wording, and either the project types a new project may use or a bounded summary of the existing project (two levels of files, package.json scripts and dependency names, the start of README.md and AGENTS.md). It expects one JSON object back: the next question (`{"done": false, "question", "options"?, "recommended"?}`, one decision in at most three sentences; longer ones are sent back) or the plan (`{"done": true, "summary", "projects", "decisions"}`; `projects` is ignored when extending). The agent asks only about decisions that change what gets built or that a reviewer would challenge, settles small details itself and records them as decisions, and plans right away when you say you've had enough. A reply that breaks the protocol goes back with the reason up to twice; a third bad reply stops the session. Your answers reach the agent exactly as typed, next to the numbered options they may refer to; empty means you took the recommendation. At the end an empty reply confirms the plan and anything else becomes another question.
+
+`--agent omp` (the default) runs `omp -p --no-session --no-tools`; `--agent claude` runs `claude -p --no-session-persistence` with the prompt on stdin; any other value containing a `/` is an executable that reads the prompt on stdin. `--model` is passed to the agent. Turns time out after five minutes. The same agent then builds: an interactive session in the workspace that hands independent ready tickets to parallel subagents and integrates them itself.
+
+**After the plan.** A new project's plan may only use project types with a generator, in `.` or distinct lowercase folder names. `grill` runs `engineering create` for each (passing your create options; Hono on Node also gets `--install --pm <manager>`), after saving the plan to a temporary file named in any failure for a retry with `--plan`. It writes `docs/grill/<topic>/` with SPEC, DECISIONS, TRANSCRIPT and BUILD, and, for new projects, a pointer section in AGENTS.md. The agent then breaks the plan into 2 to 30 tickets, each depending only on earlier ones and naming a planned project (`.` when extending), written to TICKETS.md. With Beads enabled they become beads, with `bd dep add` for each dependency; a workspace without `.beads` gets `bd init` first. Finally the build agent (`claude` or `omp`, interactive) starts in the workspace, told to work `bd ready` and finish with TALK-TRACK.md. `--no-build` stops before that.
+
+**Resuming.** `.engineering/grill/<topic>.json` records the plan, transcript, tickets and bead ids. Rerunning with the same prompt or topic skips whatever is already done. A `--plan` file may carry `spec`, `plan`, `transcript` and `tickets`; tickets in the file skip the ticket turn. `--dry-run` grills and prints the create commands and brief folder without creating or writing anything.
+
+The `engineering-grill` agent skill grills in chat instead of the terminal, writes such a plan file, and runs `engineering grill <directory> --plan FILE --no-build` before building the tickets itself.
 
 ## Adopt an existing project
 
