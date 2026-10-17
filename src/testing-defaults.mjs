@@ -59,6 +59,23 @@ const mutationExclusions = [
 	"*{.config,.conf}.{js,mjs,cjs,ts,mts,cts}",
 ];
 
+/**
+ * Agent and tooling folders that tests never read. Skill folders hold directory symlinks, which
+ * Stryker's sandbox copy rejects with EISDIR; .env and vendor stay because tests may load them.
+ */
+const sandboxIgnores = [
+	".engineering",
+	".beads",
+	".graphify",
+	".agents",
+	".claude",
+	".codex",
+	".agent",
+	".omp",
+	".pi",
+	"graphify-out",
+];
+
 export function mutationConfig(commands, nativeVitest) {
 	return {
 		$schema: "./node_modules/@stryker-mutator/core/schema/stryker-schema.json",
@@ -68,6 +85,7 @@ export function mutationConfig(commands, nativeVitest) {
 			? { coverageAnalysis: "perTest" }
 			: { coverageAnalysis: "off", commandRunner: { command: commands.join(" && ") } }),
 		mutate: ["**/*.{js,jsx,mjs,cjs,ts,tsx,mts,cts}", `!**/{${mutationExclusions.join(",")}}{,/**}`],
+		ignorePatterns: sandboxIgnores.map((folder) => `/${folder}`),
 		reporters: ["clear-text", "progress", "html", "json"],
 		htmlReporter: { fileName: "reports/mutation/mutation.html" },
 		jsonReporter: { fileName: "reports/mutation/mutation.json" },

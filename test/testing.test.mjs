@@ -187,6 +187,16 @@ test("mutation adoption preserves user configuration and script lifecycle hooks"
 	assert.equal(disabled.files.size, 0);
 });
 
+test("the Stryker sandbox skips agent skill links but keeps files tests may read", (t) => {
+	const manifest = { scripts: { test: "vitest run" }, devDependencies: { vitest: "4.1.0" } };
+	const mutation = mutationPlan(fixture(t, {}), manifest, {});
+	const config = JSON.parse(mutation.files.get("stryker.config.json"));
+	// Skill folders hold directory symlinks; copying them into the sandbox fails with EISDIR.
+	for (const folder of ["/.claude", "/.agents", "/.codex", "/.omp", "/.pi", "/.beads"])
+		assert.ok(config.ignorePatterns.includes(folder), `${folder} stays out of the sandbox`);
+	assert.ok(!config.ignorePatterns.some((pattern) => /\.env|vendor/.test(pattern)));
+});
+
 test("mutation defaults never turn unknown or lifecycle-wrapped tests into commands", (t) => {
 	const root = fixture(t, {});
 	const manifest = {
