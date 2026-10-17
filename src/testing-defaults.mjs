@@ -1,3 +1,5 @@
+import { exclusions } from "./quality/files.mjs";
+
 export const testDiscovery = {
 	vitest: `import { spawnSync } from "node:child_process";
 import { dirname, join } from "node:path";
@@ -40,3 +42,37 @@ if (!found) {
 }
 `,
 };
+
+export const mutationVersion = "10.0.0";
+export const mutationScript = "stryker run";
+
+const mutationExclusions = [
+	...exclusions,
+	"test",
+	"tests",
+	"__tests__",
+	"__mocks__",
+	"fixtures",
+	"__fixtures__",
+	"*{.test,.spec,_test,_spec}.*",
+	"*.d.{ts,mts,cts}",
+	"*{.config,.conf}.{js,mjs,cjs,ts,mts,cts}",
+];
+
+export function mutationConfig(commands, nativeVitest) {
+	return {
+		$schema: "./node_modules/@stryker-mutator/core/schema/stryker-schema.json",
+		testRunner: nativeVitest ? "vitest" : "command",
+		plugins: nativeVitest ? ["@stryker-mutator/vitest-runner"] : [],
+		...(nativeVitest
+			? { coverageAnalysis: "perTest" }
+			: { coverageAnalysis: "off", commandRunner: { command: commands.join(" && ") } }),
+		mutate: ["**/*.{js,jsx,mjs,cjs,ts,tsx,mts,cts}", `!**/{${mutationExclusions.join(",")}}{,/**}`],
+		reporters: ["clear-text", "progress", "html", "json"],
+		htmlReporter: { fileName: "reports/mutation/mutation.html" },
+		jsonReporter: { fileName: "reports/mutation/mutation.json" },
+		incremental: false,
+		thresholds: { high: 90, low: 80, break: 80 },
+		allowEmpty: false,
+	};
+}

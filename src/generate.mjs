@@ -97,6 +97,10 @@ export function explainCreate(profile, target, options) {
 			? `Record existing quality issues with this reason: ${options.reason}`
 			: "Don't create a baseline; check the starter against your usual limits.",
 	);
+	if (options.mutation !== false)
+		console.log(
+			"Default StrykerJS setup follows test-runner discovery; test:mutation runs separately from setup and CI.",
+		);
 	if (options.skills !== false) {
 		const skills = selectSkills({}, profile.id);
 		console.log(

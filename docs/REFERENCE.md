@@ -19,10 +19,13 @@ This is the detailed guide to what "engineering" adds, how its checks work, and 
 | Hono packages | Official Hono skill |
 | TanStack React Start / Router | Framework skills and their required core skills |
 | Clerk SDKs | Clerk setup and matching framework/backend guidance |
+| `@stryker-mutator/core` | [Stryker mutation-testing skill](https://github.com/Kadajett/stryker-skill) |
 
 Selection looks at direct dependencies, dev dependencies, optional dependencies, and peers. The actual frontend dependencies take precedence over the profile's default. React used only by OpenTUI doesn't bring in browser-focused Vercel guidance; web dependencies still receive it. Duplicate skills are installed once, and unrelated provider skills are left out. Packages without a verified match are reported. The general skills still apply, but aren't presented as library-specific coverage.
 
 Sources include [Matt Pocock](https://github.com/mattpocock/skills), [Cloudflare](https://github.com/cloudflare/skills), [Vercel](https://github.com/vercel-labs/agent-skills), [OpenTUI](https://github.com/anomalyco/opentui), [Hono](https://github.com/honojs/skills), [TanStack](https://github.com/TanStack/router), and [Clerk](https://github.com/clerk/skills). The skill catalog records reviewed names, paths, and immutable commits rather than picking a popular search result at install time.
+
+The Stryker skill is pinned to a reviewed release and selected only by the exact direct `@stryker-mutator/core` package, not by Vitest alone or an arbitrary package in the Stryker scope. Installing guidance does not run mutation tests, rewrite configuration, lower thresholds, or establish runner compatibility. Its bundled references also cover Stryker.NET and Stryker4s, but this CLI's package-based selection does not adopt standalone .NET/Scala projects; install the portable skill directly for those hosts. [Observed evaluation and compatibility limits](https://github.com/Kadajett/stryker-skill/blob/b1abf81ca5fd577345e1674824d515de120a9f4c/EVALUATION.md).
 
 ### Reuse and portability
 
@@ -58,9 +61,23 @@ engineering recommend . --include-installed
 engineering recommend . --catalog ~/favorites.json --json
 ```
 
-The built-in catalog is separate from automatic selection: six optional Matt Pocock workflows (research, domain-modeling, prototype, grilling, writing-for-agents, code-review), TypeScript guidance, Apollo's Rust best practices, pytest, and Clerk testing/webhooks. Sources link to inspected `SKILL.md` files at immutable revisions. Descriptions call out opinionated conventions or setup requirements; particularly, code-review's upstream issue-tracker integration must respect Beads rather than introduce another tracker.
+The built-in catalog is separate from automatic selection: six optional Matt Pocock workflows (research, domain-modeling, prototype, grilling, writing-for-agents, code-review), Cursor Team Kit review/verification/PR preparation, Dietrich Gebert's Ponytail writing and complexity review, TypeScript guidance, Apollo's Rust best practices, pytest, and Clerk testing/webhooks. Sources link to inspected `SKILL.md` files at immutable revisions. Descriptions call out opinionated conventions or setup requirements; particularly, code-review's upstream issue-tracker integration must respect Beads rather than introduce another tracker.
 
 By default, results exclude both the project's automatic selections and skills already available in native project directories, user collections, or registered Claude plugins. `--include-installed` reveals the latter with an availability label; it still excludes automatic defaults. Availability means a readable, correctly named skill entry point, not verification that every agent can use every ancillary resource. Dangling links and malformed entry points do not count as installed.
+
+#### Verified review and writing extras
+
+The requested “thermonuclear-code-review from Cursor” resolves to **thermo-nuclear-code-quality-review**, the actual frontmatter name in Cursor's `cursor-team-kit`. “Ponytail code writing” resolves to **ponytail** from **Dietrich Gebert**, not Cursor. Searches included `thermonuclear-code-review`, `thermonuclear code review Cursor skill`, `thermo-nuclear code review skill`, `ponytail code skill`, and the alternate `ponyfill code writing skill`; the hyphenated review spelling led to the primary source, while ponyfill did not identify a separate matching writing skill. Catalog names use the verified upstream names, not invented aliases.
+
+| Optional skill and pinned source | Scope and requirements |
+| --- | --- |
+| [thermo-nuclear-code-quality-review](https://github.com/cursor/plugins/blob/7366ac128bdf95f45e6734f412b49a4031800169/cursor-team-kit/skills/thermo-nuclear-code-quality-review/SKILL.md) | Cursor Team Kit's unusually strict maintainability audit, including structural simplification and opinionated 1,000-line guidance. Upstream disables automatic model invocation. Its prompt encourages restructuring, so agree on review-only versus implementation scope; it does not replace correctness/security review. No third-party service integration is specified. |
+| [ponytail](https://github.com/DietrichGebert/ponytail/blob/356918eba965ee1eac64bd3a7f0dd02108350de5/skills/ponytail/SKILL.md) | Minimal-code writing through reuse, standard libraries, and native features; preserves security, trust-boundary validation, accessibility, and explicitly requested behavior. Its lite/full/ultra modes persist until stopped or changed, and its minimal-test conventions are opinionated. Prefer explicit scope over silently shrinking a requirement. The separate full plugin has Node.js lifecycle hooks; recommending this entry point does not install or activate them. |
+| [ponytail-review](https://github.com/DietrichGebert/ponytail/blob/356918eba965ee1eac64bd3a7f0dd02108350de5/skills/ponytail-review/SKILL.md) | Lists deletion and simplification opportunities without applying fixes. Correctness, security, and performance are explicitly out of scope; pair with a normal review and preserve required validation rather than treating brevity as proof of safety. |
+| [verify-this](https://github.com/cursor/plugins/blob/7366ac128bdf95f45e6734f412b49a4031800169/cursor-team-kit/skills/verify-this/SKILL.md) | Runs local baseline/treatment experiments and reports verified, not verified, or inconclusive. Requires a runnable surface and valid comparison; UI/CLI paths reference the companion `control-ui`/`control-cli` skills. Sensitive artifacts stay inline unless the user agrees to disk storage. |
+| [make-pr-easy-to-review](https://github.com/cursor/plugins/blob/7366ac128bdf95f45e6734f412b49a4031800169/cursor-team-kit/skills/make-pr-easy-to-review/SKILL.md) | Uses Git and authenticated `gh` access to inspect a PR and improve its description/reviewer guidance. May edit PR metadata; rewriting history or force-pushing needs user agreement and checks that code content remains unchanged. |
+
+Provenance: [Cursor Team Kit's pinned manifest](https://github.com/cursor/plugins/blob/7366ac128bdf95f45e6734f412b49a4031800169/cursor-team-kit/.cursor-plugin/plugin.json) identifies the package in Cursor's repository (manifest author: Eric Zakariasson); [Ponytail's pinned lifecycle configuration](https://github.com/DietrichGebert/ponytail/blob/356918eba965ee1eac64bd3a7f0dd02108350de5/hooks/claude-codex-hooks.json) declares its Node.js commands. These are inspected recommendations, not a compatibility certification, benchmark endorsement, or permission to run upstream setup. No exact-name ambiguity remains for these two requests.
 
 #### Curating your favorites
 
@@ -209,6 +226,46 @@ Creation preserves upstream test scripts, dependencies, configuration, and versi
 New defaults expose a strict `test` script and a discovery-aware `test:ci` script backed by `.engineering/test.mjs`. Setup and generated CI run the latter. An empty suite reports **no tests ran**, not coverage; as soon as tests are discovered, the real runner executes them and propagates failures. No example application tests or `passWithNoTests` flags are fabricated.
 
 Vitest discovery loads the project's Vitest/Vite configuration. Bun discovery respects the configured test root and native filename conventions. Existing Vitest watch scripts receive a nonwatching alias; known direct one-shot commands from Node, Bun, Vitest, Jest, Mocha, AVA, TAP, uvu, React Scripts, Playwright, and Cypress are eligible for verification. Shell pipelines, lifecycle-hook wrappers, and unknown commands remain manual rather than being guessed safe.
+
+### Mutation testing
+
+Mutation setup is **enabled by default** for create/adopt across the current JavaScript/TypeScript profiles. It adds pinned `@stryker-mutator/core@10.0.0`, a `test:mutation` script (`stryker run`), and project-owned `stryker.config.json`. Node 22.12+ already satisfies StrykerJS 10's Node requirement. The existing package manager installs the dependencies locally; no global Stryker installation or dashboard account is needed.
+
+The planner reuses recognized one-shot **unit** test commands, preserving their flags and test configuration. A single plain `vitest run` with a simple Vitest 2+ version declaration gets the matching pinned native Vitest plugin and per-test coverage analysis. Other recognized host runners, including Bun and Node's test runner, use Stryker's built-in command adapter with coverage analysis off. Multiple eligible commands run in sequence per mutant. Complex version declarations or nonstandard Vitest flags conservatively retain their exact command rather than imposing plugin options.
+
+Existing Stryker packages, scripts, or root configuration prevent a second setup; even customized configuration remains untouched on repeated adoption. Mutation script lifecycle hooks are also preserved, not attached to a newly generated script. `--no-mutation` suppresses additions without removing existing tools. Dry-run output shows the selected adapter or why no setup was added.
+
+Default policy:
+
+- Mutate JS/TS, including JSX/TSX and module variants, throughout the project rather than assuming `src/`. Exclude test/spec files and directories, declarations, configuration modules, and the platform's known generated/vendor/agent paths. Review `mutate` for project-specific roots, fixtures, migrations, or generated files.
+- Write HTML and JSON reports to `reports/mutation/mutation.html` and `reports/mutation/mutation.json`. Temp/report paths are ignored by Git and excluded from quality scans and Graphify. Source code stays in place; Stryker mutates a sandbox.
+- Fail a valid mutation score below **80**; high/low report bands are 90/80. This is an engineering default, not Stryker's upstream threshold. Keep ordinary tests and typechecks too: mutation score is not code coverage or a correctness proof.
+- Use full runs (`incremental: false`). Command-runner incremental mode cannot detect changed tests, and even native incremental mode can miss dependency/configuration changes.
+- Keep `allowEmpty: false`. Native Vitest reports actual tests; the command adapter synthesizes one result from exit status and **cannot detect zero executed tests**. Empty/no-valid-mutant reports can still exit successfully upstream and must not be interpreted as a passing test-quality measurement.
+
+Run with the project's package manager:
+
+```bash
+npm run test:mutation
+```
+
+The script is deliberately separate from `test:ci`, `engineering:check`, setup verification, and generated CI: mutation runs multiply unit-test cost, and empty starters do not yet have meaningful tests. To enforce it in CI, run the same script after the project's preparation and normal tests. Setup success never claims a mutation score. Review survivors and improve behavioral assertions rather than adding meaningless tests or automatically weakening the threshold.
+
+**Runtime boundaries:** unknown commands, lifecycle-wrapped tests, and Playwright/Cypress-only setups receive an explanation rather than a fabricated unit integration. Known `@cloudflare/vitest-pool-workers` and `@cloudflare/vitest-plugin` projects are also skipped: native Stryker Vitest uses a host thread pool, while a command runner's host environment does not activate mutants inside Worker isolates. Plain Vitest tests of runtime-independent Worker logic are supported. Browser/custom pools and remote runners need an explicit integration review; a recognized command alone cannot establish remote mutant activation.
+
+#### Other Stryker languages
+
+Language detection by `engineering recommend` is broader than project creation/adoption. The latter currently requires `package.json`; it does not configure .NET or Scala builds. Stryker is not a universal arbitrary-language mutator.
+
+| Language | Upstream engine | Project-local integration, not automatically applied here |
+| --- | --- | --- |
+| JavaScript / TypeScript | StrykerJS 10.0.0 | Default setup above; test runtime must execute the source or have a reviewed build step. |
+| C# | Stryker.NET 4.16.0 | Create a local tool manifest only if absent (`dotnet new tool-manifest`), then `dotnet tool install dotnet-stryker --version 4.16.0`. Commit the manifest; teammates run `dotnet tool restore`. Run `dotnet stryker` from the test project. This pinned release targets .NET 8; also retain the app's SDK/build prerequisites. |
+| Scala | Stryker4s 1.1.1 | For sbt, add `addSbtPlugin("io.stryker-mutator" % "sbt-stryker4s" % "1.1.1")` to the existing `project/plugins.sbt`, then run `sbt stryker` (or `sbt module/stryker`). Use JDK 17+ and the project's compatible build tool. Official Maven and Mill integrations are also available. |
+
+C# support does not imply F#/VB support; Scala support does not imply Java/Kotlin support. Python, Rust, and Go need different mutation tools, not an invented Stryker adapter. The non-JS commands above are source-verified guidance, not runtime-verified integrations in this CLI.
+
+Primary references: [StrykerJS configuration](https://github.com/stryker-mutator/stryker-js/blob/cb3bd8fe25d5215422c9b632357062d3a43fcf92/docs/configuration.md), [incremental limitations](https://github.com/stryker-mutator/stryker-js/blob/cb3bd8fe25d5215422c9b632357062d3a43fcf92/docs/incremental.md), [command runner implementation](https://github.com/stryker-mutator/stryker-js/blob/cb3bd8fe25d5215422c9b632357062d3a43fcf92/packages/core/src/test-runner/command-test-runner.ts), [Workers process environment](https://developers.cloudflare.com/workers/runtime-apis/nodejs/process/), [Stryker.NET 4.16.0 setup](https://github.com/stryker-mutator/stryker-net/blob/f9109e24c615a7030a3b33e5532c665c974e4ec5/docs/getting-started.md), and [Stryker4s 1.1.1 build integrations](https://github.com/stryker-mutator/stryker4s/blob/ea5b62a77fc70884e679ee1d598217c0772e4c8e/README.md).
 
 ## What a project receives
 

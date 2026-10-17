@@ -5,6 +5,8 @@ const sources = {
 	gentleman: "Gentleman-Programming/Gentleman-Skills/c8036a37893679dc5e942484975405d39689c63b",
 	apollo: "apollographql/skills/c288eb80629dd2309eed81f23d693f66a452d043",
 	clerk: "clerk/skills/c77dfc77a4f995673583c520da6630b60a2aa1de",
+	cursor: "cursor/plugins/7366ac128bdf95f45e6734f412b49a4031800169",
+	ponytail: "DietrichGebert/ponytail/356918eba965ee1eac64bd3a7f0dd02108350de5",
 };
 
 function source(key, path) {
@@ -62,6 +64,36 @@ export const defaultRecommendations = [
 		description:
 			"Review standards and spec separately. Requires issue-tracker integration; adapt docs/agents/issue-tracker.md to Beads before use, rather than replacing Beads through upstream setup.",
 		source: source("matt", "skills/engineering/code-review"),
+	},
+	{
+		name: "thermo-nuclear-code-quality-review",
+		description:
+			"Cursor Team Kit's explicit-invocation maintainability audit: aggressive structural simplification and opinionated 1,000-line guidance. Review scope before allowing its suggested restructuring; not a correctness or security review.",
+		source: source("cursor", "cursor-team-kit/skills/thermo-nuclear-code-quality-review"),
+	},
+	{
+		name: "ponytail",
+		description:
+			"Dietrich Gebert's minimal-code workflow: reuse, stdlib and native features before new code. Opinionated persistent lite/full/ultra modes and minimal tests; the separate full plugin adds Node.js lifecycle hooks.",
+		source: source("ponytail", "skills/ponytail"),
+	},
+	{
+		name: "ponytail-review",
+		description:
+			"List over-engineering and deletion opportunities without applying fixes. Explicitly excludes correctness, security and performance; pair with a normal review and preserve required validation.",
+		source: source("ponytail", "skills/ponytail-review"),
+	},
+	{
+		name: "verify-this",
+		description:
+			"Prove a falsifiable claim with local baseline/treatment evidence. Runs repros or measurements; UI/CLI paths reference control-ui/control-cli skills. Sensitive artifacts require agreement before disk storage.",
+		source: source("cursor", "cursor-team-kit/skills/verify-this"),
+	},
+	{
+		name: "make-pr-easy-to-review",
+		description:
+			"Prepare reviewer guidance and PR descriptions using Git and authenticated gh access. Can edit PR metadata; history rewriting or force-pushing requires an agreed plan and content-identity checks.",
+		source: source("cursor", "cursor-team-kit/skills/make-pr-easy-to-review"),
 	},
 	{
 		name: "typescript",

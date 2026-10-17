@@ -14,7 +14,7 @@ import { installProject } from "./install-state.mjs";
 import { projectScripts, runScripts, verifyProject } from "./verification.mjs";
 import { Stages } from "./stages.mjs";
 import { setupSkills, skillPlan } from "./skills.mjs";
-import { testingPlan } from "./testing.mjs";
+import { mutationPlan, testingPlan } from "./testing.mjs";
 
 export async function prepareTools(options) {
 	if (options.installTools) await installMissingTools();
@@ -100,10 +100,12 @@ function adoptionPlan(root, profile, options, quality) {
 	if (config.profile !== profile.id)
 		throw new Error(`Existing policy profile is ${config.profile}`);
 	const testing = testingPlan(root, manifest, profile, options);
-	const nextManifest = mergedManifest(testing.manifest);
+	const mutation = mutationPlan(root, testing.manifest, options);
+	const nextManifest = mergedManifest(mutation.manifest);
 	const nativeScripts = projectScripts(root, profile, nextManifest, testing);
 	const files = projectFiles(root, profile, manager, { ...options, nativeScripts });
 	for (const [name, content] of testing.files) files.set(name, content);
+	for (const [name, content] of mutation.files) files.set(name, content);
 	safePath(root, ".engineering/vendor");
 	safePath(root, ".engineering/baseline.json");
 	safePath(root, ".gitignore");
@@ -116,6 +118,7 @@ function adoptionPlan(root, profile, options, quality) {
 		nextManifest,
 		configured,
 		testing,
+		mutation,
 		scripts: nativeScripts,
 	};
 }
@@ -170,6 +173,7 @@ function printPlan(root, profile, plan, options) {
 				preparation: plan.scripts.prepare,
 				nativeChecks: plan.scripts.checks,
 				testing: { runner: plan.testing.runner, notes: plan.testing.notes },
+				mutation: { runner: plan.mutation.runner, notes: plan.mutation.notes },
 				manifest: plan.nextManifest,
 			},
 			null,
@@ -185,7 +189,12 @@ async function applyPlan(root, profile, plan, options) {
 		await appendIgnores(
 			root,
 			".gitignore",
-			["!/.engineering/", "!/.engineering/vendor/", "!/.engineering/vendor/*.tgz"],
+			[
+				"!/.engineering/",
+				"!/.engineering/vendor/",
+				"!/.engineering/vendor/*.tgz",
+				...(plan.mutation.runner ? ["/.stryker-tmp/", "/reports/mutation/"] : []),
+			],
 			"PROJECT",
 		);
 	});
@@ -213,6 +222,8 @@ function printNextSteps(root, plan, skills) {
 	for (const note of plan.testing.notes) console.log(note);
 	if (plan.testing.checks.length)
 		console.log(`Run tests: ${plan.manager.name} run ${plan.testing.checks[0]}`);
+	for (const note of plan.mutation.notes) console.log(note);
+	if (plan.mutation.runner) console.log(`Test your tests: ${plan.manager.name} run test:mutation`);
 	const available = plan.nextManifest.scripts;
 	const start = available.dev ? "dev" : available.start ? "start" : null;
 	if (start) console.log(`In that directory, start the app: ${plan.manager.name} run ${start}`);

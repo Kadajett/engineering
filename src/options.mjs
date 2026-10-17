@@ -7,7 +7,7 @@ function validateBaseline(options) {
 		throw new Error("Choose --baseline or --no-baseline, not both");
 }
 
-function validateSkillOptions(options, command) {
+function validateSetupOptions(options, command) {
 	if (
 		(options.skillsDirs.length || options.skills === false) &&
 		!["create", "adopt", "plan", "skills"].includes(command)
@@ -15,6 +15,8 @@ function validateSkillOptions(options, command) {
 		throw new Error("Skill options are supported only for create, adopt, plan and skills");
 	if (options.skillsDirs.some((path) => !path.trim()))
 		throw new Error("--skills-dir requires a nonempty directory");
+	if (options.mutation === false && !["create", "adopt", "plan"].includes(command))
+		throw new Error("--no-mutation is supported only for create, adopt and plan");
 }
 
 function validateRecommendationOptions(options, command) {
@@ -29,7 +31,7 @@ function validateRecommendationOptions(options, command) {
 
 function validateOptions(options, command) {
 	validateBaseline(options);
-	validateSkillOptions(options, command);
+	validateSetupOptions(options, command);
 	validateRecommendationOptions(options, command);
 	if (options.open && options.open !== "vscode") throw new Error("--open supports vscode");
 	if (options.name !== undefined && !options.name.trim())
@@ -63,6 +65,7 @@ export function parseOptions(args) {
 			"no-graphify": { type: "boolean" },
 			"no-ci": { type: "boolean" },
 			"no-skills": { type: "boolean" },
+			"no-mutation": { type: "boolean" },
 			"skills-dir": { type: "string", multiple: true },
 			catalog: { type: "string" },
 			json: { type: "boolean" },
@@ -79,6 +82,7 @@ export function parseOptions(args) {
 		graphify: !values["no-graphify"],
 		ci: !values["no-ci"],
 		skills: !values["no-skills"],
+		mutation: !values["no-mutation"],
 		skillsDirs: values["skills-dir"] ?? [],
 		allowDeprecated: Boolean(values["allow-deprecated"]),
 		includeInstalled: Boolean(values["include-installed"]),
@@ -112,6 +116,7 @@ Create/adopt options:
   --manager npm|pnpm|yarn|bun  Choose a manager without replacing an existing choice
   --install-tools        Install missing tools before setup
   --no-beads --no-graphify --no-ci --no-skills  Leave out what you don't need
+  --no-mutation          Leave out default StrykerJS setup (existing tooling is preserved)
   --skills-dir PATH      Reuse another local skill collection (repeatable)
   --allow-deprecated     Allow a legacy Create React App project
   --dry-run              Show the plan without changing files or opening an editor

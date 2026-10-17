@@ -68,6 +68,7 @@ Skills are on by default—there's no extra setup command to remember. Every pro
 - **Web React / Next.js:** Vercel's React and Next.js best practices.
 - **OpenTUI:** the official OpenTUI skill, including Core, React, and Solid renderers. Terminal React alone doesn't pull in browser-focused React guidance.
 - **Hono, TanStack Start / Router, Clerk:** matching upstream skills and any companion skills they need.
+- **StrykerJS:** the [Stryker skill](https://github.com/Kadajett/stryker-skill), selected by a direct `@stryker-mutator/core` dependency. It covers meaningful survivors, safe execution, and sustained team workflows—not score chasing.
 
 The catalog uses reviewed sources and pinned revisions. If a library has no verified match, "engineering" says so rather than pretending it has library-specific guidance.
 
@@ -91,7 +92,7 @@ engineering recommend . --include-installed # also show favorites you already ha
 engineering recommend . --catalog ~/favorites.json --json
 ```
 
-Recommendations are separate from the automatic installs. The initial selection includes optional planning/research skills, TypeScript, Rust and pytest guidance, and Clerk testing/webhooks. Every suggestion explains its match and links to a reviewed, pinned source.
+Recommendations are separate from the automatic installs. The selection includes Cursor Team Kit's **thermo-nuclear-code-quality-review** (the requested thermonuclear review), Dietrich Gebert's **ponytail** minimal-code workflow, focused complexity review, evidence-based verification, and PR preparation. Planning/research skills, TypeScript, Rust and pytest guidance, and Clerk testing/webhooks remain available. Every suggestion explains its match and links to an inspected `SKILL.md` at an immutable commit; see [verified names, sources, and caveats](docs/REFERENCE.md#verified-review-and-writing-extras).
 
 Keep your own favorites in `${XDG_CONFIG_HOME:-$HOME/.config}/kadajett-engineering/recommendations.json` for all projects, or `.engineering/recommendations.json` for one project. You can add skills, override descriptions and matching rules, or disable suggestions. A record without matching rules is general; others match languages, direct packages, or project profiles. See the [catalog format and precedence](docs/REFERENCE.md#optional-skill-recommendations).
 
@@ -117,6 +118,20 @@ New projects keep upstream test runners and configuration. Where none exists, or
 
 The `test` command is strict. For added defaults, `test:ci` discovers tests using the runner and reports an empty suite explicitly—no placeholder tests or coverage claims. Once tests exist, their failures fail setup and CI. Known one-shot upstream test commands run automatically; a Vitest watcher gets a separate one-shot alias without replacing the original script. Unknown scripts remain manual.
 
+### Mutation testing by default
+
+Creation and adoption add [StrykerJS](https://stryker-mutator.io/docs/stryker-js/) **10.0.0**, `stryker.config.json`, and `test:mutation` when a compatible one-shot unit test command is available. This covers the platform's JavaScript/TypeScript profiles, including Bun/OpenTUI. Existing Stryker setup is preserved; `--no-mutation` skips new setup.
+
+```bash
+npm run test:mutation   # use the project's package manager
+```
+
+Stryker changes production code in a temporary sandbox and checks whether your tests catch it. The generated configuration fails scores below **80**, writes local HTML/JSON reports under `reports/mutation/`, and excludes tests, declarations, configuration, and known generated/vendor output from mutation. Review the scope for your app. Mutation testing runs separately from setup, ordinary checks, and generated CI; add the script to CI when you want the slower gate.
+
+Plain Vitest uses its native Stryker runner. Other recognized host unit-test commands use the command adapter, which reruns the full suite per mutant and cannot count tests. Unknown commands, E2E-only projects, and Cloudflare's isolated Worker test pools aren't automatically configured. Runtime-independent Worker unit tests remain eligible. Empty suites or reports without valid mutants are not evidence of test quality.
+
+Stryker also has C#/.NET and Scala engines, but this platform currently creates/adopts JS/TS projects only. The [mutation testing reference](docs/REFERENCE.md#mutation-testing) documents that boundary and the native local-tool paths for those engines.
+
 ## Bring an existing project
 
 ```bash
@@ -134,6 +149,7 @@ A few useful options:
 | `--no-baseline` | Skips the baseline question and accepts no new exceptions. |
 | `--baseline --reason "..."` | Saves the starter's existing issues with your approval reason, after native checks pass. |
 | `--no-beads --no-graphify --no-ci --no-skills` | Leaves out the integrations you don't want. |
+| `--no-mutation` | Skips new StrykerJS setup without removing existing mutation tooling. |
 | `--dry-run` | Shows the plan without file changes or downloads. |
 
 ## What gets enforced?

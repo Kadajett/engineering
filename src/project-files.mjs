@@ -19,6 +19,7 @@ This project uses @kadajett/engineering with the ${profile.id} profile.
 - If we're keeping known quality issues, record them once with engineering baseline --accept --reason "why we're keeping them". Don't reset the baseline to make new failures pass. Run engineering prune after fixing old issues to remove their allowances.
 - Keep the project's existing package manager, formatter, linter, and TypeScript module/runtime settings.
 - Tests follow the same complexity, nesting, and parameter limits as app code, but have no function-length limit and may be up to 1000 lines per file. Generated, vendor, and build files are excluded through configuration.
+- When adding or changing tests, run test:mutation if available and inspect stryker.config.json for scope and the score threshold. Surviving mutants point to missing behavioral assertions; add meaningful tests rather than weakening the threshold. Mutation runs are separate from setup and the fast quality gate.
 - Use Graphify to help navigate, then check the source itself. Keep secrets and .env files out of extraction, and ask before using semantic model calls.
 - Setup isn't permission to add remotes, deploy, or create cloud resources.
 - For Cloudflare projects, use the actual Wrangler configuration, generated types, and resource IDs. Bindings belong to this project, not to an example from another app.

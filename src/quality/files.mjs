@@ -13,6 +13,8 @@ export const generatedExclusions = [
 	"dist",
 	"build",
 	"coverage",
+	".stryker-tmp",
+	"reports/mutation",
 	".next",
 	".tanstack",
 	".output",

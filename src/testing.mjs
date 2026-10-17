@@ -1,6 +1,11 @@
 import { existsSync, readdirSync } from "node:fs";
 import { safePath, text } from "./files.mjs";
-import { testDiscovery } from "./testing-defaults.mjs";
+import {
+	mutationConfig,
+	mutationScript,
+	mutationVersion,
+	testDiscovery,
+} from "./testing-defaults.mjs";
 
 const runnerPackages = [
 	"vitest",
@@ -186,5 +191,80 @@ export function testingPlan(root, manifest, profile, options) {
 		runner,
 		notes,
 		...discovery,
+	};
+}
+
+function existingMutation(root, manifest) {
+	const dependencies = { ...manifest.dependencies, ...manifest.devDependencies };
+	return (
+		Object.keys(dependencies).some((name) => name.startsWith("@stryker-mutator/")) ||
+		Object.entries(manifest.scripts ?? {}).some(
+			([name, command]) =>
+				/^(?:(?:pre|post)?test:mutation|mutate|mutation)/.test(name) || /\bstryker\b/.test(command),
+		) ||
+		readdirSync(root).some((name) => /^\.?stryker(?:\.conf|\.config)?(?:\.|$)/i.test(name))
+	);
+}
+
+function mutationCommands(manifest) {
+	return testScripts(manifest.scripts)
+		.map((name) => manifest.scripts[name])
+
+		.filter((command) => !/^(?:playwright|cypress)\b/.test(command));
+}
+function mutationBlocker(manifest, commands) {
+	const dependencies = { ...manifest.dependencies, ...manifest.devDependencies };
+	if (dependencies["@cloudflare/vitest-pool-workers"] || dependencies["@cloudflare/vitest-plugin"])
+		return "Cloudflare Worker isolates need an explicit mutant-activation integration; host environment variables do not activate their mutants.";
+	if (!commands.length) return "No recognized one-shot unit test command. Add one and adopt again.";
+	return null;
+}
+
+export function mutationPlan(root, manifest, options) {
+	const files = new Map();
+	const notes = [];
+	const unchanged = { manifest, files, notes, runner: null };
+	if (options.mutation === false) {
+		notes.push("Mutation testing setup disabled; existing tooling is unchanged.");
+		return unchanged;
+	}
+	if (existingMutation(root, manifest)) {
+		notes.push("Existing mutation testing scripts, dependencies, and configuration preserved.");
+		return unchanged;
+	}
+	const commands = mutationCommands(manifest);
+	const blocker = mutationBlocker(manifest, commands);
+	if (blocker) {
+		notes.push(`Mutation testing not configured: ${blocker}`);
+		return unchanged;
+	}
+	const dependencies = { ...manifest.dependencies, ...manifest.devDependencies };
+	const nativeVitest =
+		commands.length === 1 &&
+		commands[0] === "vitest run" &&
+		/^[~^]?(?:[2-9]|[1-9]\d+)\.\d+\.\d+$/.test(dependencies.vitest ?? "");
+	const config = mutationConfig(commands, nativeVitest);
+	files.set("stryker.config.json", `${JSON.stringify(config, null, 2)}\n`);
+	safePath(root, "stryker.config.json");
+	notes.push(
+		"StrykerJS configured. Run test:mutation separately; scores below 80 fail. No mutation tests ran during setup.",
+	);
+	if (!nativeVitest)
+		notes.push(
+			"Command runner executes the full unit suite per mutant without coverage analysis. Keep tests strict: this adapter cannot detect zero executed tests.",
+		);
+	return {
+		manifest: {
+			...manifest,
+			scripts: { ...manifest.scripts, "test:mutation": mutationScript },
+			devDependencies: {
+				...manifest.devDependencies,
+				"@stryker-mutator/core": mutationVersion,
+				...(nativeVitest ? { "@stryker-mutator/vitest-runner": mutationVersion } : {}),
+			},
+		},
+		files,
+		notes,
+		runner: config.testRunner,
 	};
 }

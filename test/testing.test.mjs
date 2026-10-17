@@ -3,7 +3,7 @@ import { mkdirSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 import { projectFiles } from "../src/project-files.mjs";
-import { oneShotTest, testingPlan } from "../src/testing.mjs";
+import { mutationPlan, oneShotTest, testingPlan } from "../src/testing.mjs";
 import { projectScripts } from "../src/verification.mjs";
 import { fixture } from "./fixture.mjs";
 
@@ -169,4 +169,49 @@ test("discovery files survive adoption without replacing user-owned files or lin
 	symlinkSync(join(linked, "user-owned"), join(linked, ".engineering/test.mjs"));
 	assert.throws(() => testingPlan(linked, {}, { id: "react-vite" }, { created: true }), /symlink/);
 	assert.equal(readFileSync(join(linked, "user-owned"), "utf8"), "keep\n");
+});
+
+test("mutation adoption preserves user configuration and script lifecycle hooks", (t) => {
+	const manifest = { scripts: { test: "vitest run" }, devDependencies: { vitest: "4.1.0" } };
+	const root = fixture(t, {
+		"stryker.config.ts": "export default { thresholds: { break: 95 } };\n",
+	});
+	const configured = mutationPlan(root, manifest, {});
+	assert.deepEqual(configured.manifest, manifest);
+	assert.equal(configured.files.size, 0);
+	const unconfigured = fixture(t, {});
+	const lifecycle = { ...manifest, scripts: { ...manifest.scripts, "pretest:mutation": "deploy" } };
+	assert.deepEqual(mutationPlan(unconfigured, lifecycle, {}).manifest, lifecycle);
+	const disabled = mutationPlan(unconfigured, manifest, { mutation: false });
+	assert.deepEqual(disabled.manifest, manifest);
+	assert.equal(disabled.files.size, 0);
+});
+
+test("mutation defaults never turn unknown or lifecycle-wrapped tests into commands", (t) => {
+	const root = fixture(t, {});
+	const manifest = {
+		scripts: {
+			test: "vitest run && deploy",
+			"test:unit": "node --test",
+			"pretest:unit": "deploy",
+			"test:e2e": "playwright test",
+		},
+	};
+	const mutation = mutationPlan(root, manifest, {});
+	assert.equal(mutation.runner, null);
+	assert.deepEqual(mutation.manifest, manifest);
+	assert.equal(mutation.files.size, 0);
+});
+
+test("Worker isolates never get a host-only mutation runner", (t) => {
+	const root = fixture(t, {});
+	const manifest = {
+		scripts: { test: "vitest run" },
+		devDependencies: { vitest: "4.1.0", "@cloudflare/vitest-pool-workers": "0.8.0" },
+	};
+	const mutation = mutationPlan(root, manifest, {});
+	assert.equal(mutation.runner, null);
+	assert.deepEqual(mutation.manifest, manifest);
+	assert.equal(mutation.files.size, 0);
+	assert.match(mutation.notes.join("\n"), /mutant-activation/);
 });
