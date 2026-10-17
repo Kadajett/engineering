@@ -293,7 +293,7 @@ Primary references: [StrykerJS configuration](https://github.com/stryker-mutator
 - `.engineering/config.json`: versioned settings for source scope, exclusions, strict TypeScript projects, limits, and direct import boundaries. Change the configuration rather than copying checker code.
 - `.engineering/baseline.json`: an optional record of the existing issues you approved.
 - `.engineering/state.json`: the profile, generator command, package manager, installation fingerprint, engineering version, and last completed phase.
-- `.engineering/vendor/kadajett-engineering-0.5.0.tgz`: the engineering package as a portable devDependency archive. Commit it with the manifest and lockfile. Managed `.gitignore` exceptions allow it even if the starter ignores `*.tgz`, so CI and other machines can install it without this checkout.
+- `.engineering/vendor/kadajett-engineering-<version>.tgz`: the engineering package as a portable devDependency archive. Commit it with the manifest and lockfile. Managed `.gitignore` exceptions allow it even if the starter ignores `*.tgz`, so CI and other machines can install it without this checkout.
 - Managed sections in `AGENTS.md` and `CLAUDE.md`, alongside any unrelated instructions already there.
 - `.github/workflows/engineering.yml`: locked dependency installation, the same preparation and native checks, then engineering checks. Existing framework workflows remain. Use `--no-ci` if you don't want a GitHub Actions workflow.
 - Optional Beads database and agent hooks, plus Graphify skills, hooks, and a code graph. Every project has its own state. Beads initialization may create a metadata commit; "engineering" doesn't configure a Git remote.
