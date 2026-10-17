@@ -227,7 +227,7 @@ test("grill writes only the brief into the project: no AGENTS.md, no other files
 		"app/package.json": '{"name":"app"}',
 		"plan.json": JSON.stringify({ spec: "Add comments to posts", plan, tickets }),
 	});
-	const result = invoke(root, ["app", "--plan", "plan.json", "--no-beads", "--no-build"]);
+	const result = invoke(root, ["app", "--plan", "plan.json", "--without", "beads", "--no-build"]);
 	assert.equal(result.status, 0, result.stderr);
 	assert.deepEqual(readdirSync(join(root, "app")).sort(), [".engineering", "docs", "package.json"]);
 	const build = readFileSync(join(root, "app/docs/grill/add-comments-to-posts/BUILD.md"), "utf8");
@@ -288,7 +288,7 @@ test("rerunning the same prompt resumes: tickets are asked for once and nothing 
 		"agent.cjs": `#!/usr/bin/env node\nconst fs=require("fs");fs.appendFileSync(${JSON.stringify("calls")},"x");process.stdin.resume();process.stdin.on("end",()=>console.log(${JSON.stringify(JSON.stringify({ tickets }))}));\n`,
 	});
 	chmodSync(join(root, "agent.cjs"), 0o755);
-	const args = ["prompt.md", "board", "--agent", "./agent.cjs", "--no-beads", "--no-build"];
+	const args = ["prompt.md", "board", "--agent", "./agent.cjs", "--without", "beads", "--no-build"];
 	const first = invoke(root, args);
 	assert.equal(first.status, 0, first.stderr);
 	assert.match(

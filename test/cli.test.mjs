@@ -9,7 +9,7 @@ import { fixture } from "./fixture.mjs";
 const cli = fileURLToPath(new URL("../bin/engineering.mjs", import.meta.url));
 
 function invoke(root, args) {
-	return spawnSync(process.execPath, [cli, ...args, "--no-skills"], {
+	return spawnSync(process.execPath, [cli, ...args, "--without", "skills"], {
 		cwd: root,
 		encoding: "utf8",
 		timeout: 10000,
@@ -26,7 +26,7 @@ test("a standalone profile needs a name instead of becoming the destination", (t
 
 test("unnamed creation and previews never fall back to the working directory", (t) => {
 	const root = fixture(t, {});
-	for (const args of [["create"], ["plan", "react-vite"], ["create", "react-vite", "--dry-run"]]) {
+	for (const args of [["create"], ["create", "react-vite", "--dry-run"]]) {
 		const result = invoke(root, args);
 		assert.equal(result.status, 1);
 		assert.match(result.stderr, /name.*--name/is);
@@ -36,7 +36,7 @@ test("unnamed creation and previews never fall back to the working directory", (
 
 test("a positional name preserves its child folder while the generator receives a safe slug", (t) => {
 	const root = fixture(t, {});
-	const result = invoke(root, ["plan", "react-vite", "MyApp"]);
+	const result = invoke(root, ["create", "react-vite", "MyApp", "--dry-run"]);
 	assert.equal(result.status, 0, result.stderr);
 	assert.ok(result.stdout.includes(`then move to ${join(root, "MyApp")}`));
 	assert.match(result.stdout, /create-vite@latest myapp /);
@@ -62,7 +62,14 @@ test("a name option without a destination derives a child folder", (t) => {
 test("an explicit path and display name remain independent", (t) => {
 	const root = fixture(t, {});
 	const destination = join(root, "apps", "Web");
-	const result = invoke(root, ["plan", "react-vite", "./apps/Web", "--name", "Support Desk"]);
+	const result = invoke(root, [
+		"create",
+		"react-vite",
+		"./apps/Web",
+		"--name",
+		"Support Desk",
+		"--dry-run",
+	]);
 	assert.equal(result.status, 0, result.stderr);
 	assert.ok(result.stdout.includes(`then move to ${destination}`));
 	assert.match(result.stdout, /create-vite@latest support-desk /);
@@ -86,7 +93,7 @@ test("previews reject missing profiles without prompting even on a terminal", (t
 			"-e",
 			`process.stdin.isTTY = true; process.stdout.isTTY = true;
 const { main } = await import(${JSON.stringify(new URL("../src/cli.mjs", import.meta.url).href)});
-await main(['plan', 'MyApp']).catch(error => { console.error(error.message); process.exitCode = 1; });`,
+await main(['create', 'MyApp', '--dry-run']).catch(error => { console.error(error.message); process.exitCode = 1; });`,
 		],
 		{ cwd: root, encoding: "utf8", timeout: 10000 },
 	);
@@ -98,32 +105,39 @@ await main(['plan', 'MyApp']).catch(error => { console.error(error.message); pro
 
 test("an explicit profile disambiguates a destination that is also a known profile", (t) => {
 	const root = fixture(t, {});
-	const result = invoke(root, ["plan", "react-vite", "--profile", "next"]);
+	const result = invoke(root, ["create", "react-vite", "--profile", "next", "--dry-run"]);
 	assert.equal(result.status, 0, result.stderr);
 	assert.match(result.stdout, /create-next-app@latest react-vite /);
 });
 
 test("an explicit path can use a profile name as its folder", (t) => {
 	const root = fixture(t, {});
-	const result = invoke(root, ["plan", "./react-vite", "--profile", "react-vite"]);
+	const result = invoke(root, ["create", "./react-vite", "--profile", "react-vite", "--dry-run"]);
 	assert.equal(result.status, 0, result.stderr);
 	assert.match(result.stdout, /create-vite@latest react-vite /);
 });
 
 test("custom generators accept name-only creation without a positional destination", (t) => {
 	const root = fixture(t, {});
-	const result = invoke(root, ["plan", "--generator", "create-example@1.0.0", "--name", "My App"]);
+	const result = invoke(root, [
+		"create",
+		"--generator",
+		"create-example@1.0.0",
+		"--name",
+		"My App",
+		"--dry-run",
+	]);
 	assert.equal(result.status, 0, result.stderr);
 	assert.match(result.stdout, /create-example@1\.0\.0 my-app/);
 });
 
 test("only an explicit dot can target an empty working directory", (t) => {
 	const root = fixture(t, {});
-	const result = invoke(root, ["plan", "react-vite", ".", "--name", "Current App"]);
+	const result = invoke(root, ["create", "react-vite", ".", "--name", "Current App", "--dry-run"]);
 	assert.equal(result.status, 0, result.stderr);
 	assert.ok(result.stdout.includes(`then move to ${root}`));
 	const occupied = fixture(t, { keep: "user data" });
-	const refused = invoke(occupied, ["plan", "react-vite", "."]);
+	const refused = invoke(occupied, ["create", "react-vite", ".", "--dry-run"]);
 	assert.equal(refused.status, 1);
 	assert.match(refused.stderr, /new or empty directory/);
 	assert.deepEqual(readdirSync(occupied), ["keep"]);

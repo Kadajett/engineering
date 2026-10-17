@@ -1,55 +1,26 @@
 import { parseArgs } from "node:util";
+import { commandNames } from "./help.mjs";
 
-function validateBaseline(options) {
-	if (options.baseline && !options.reason?.trim())
-		throw new Error("--baseline requires an explicit --reason");
-	if (options.baseline && options.noBaseline)
-		throw new Error("Choose --baseline or --no-baseline, not both");
-}
+/** Commands folded into others in 0.7.0, and what to run instead. */
+const REMOVED_COMMANDS = {
+	plan: "engineering create <profile> <dir> --dry-run",
+	list: "engineering create --help",
+	recommend: "engineering skills --suggest",
+	baseline: 'engineering check --baseline --reason "..."',
+	prune: "engineering check --prune",
+	setup: "engineering doctor --fix",
+};
 
-function validateSetupOptions(options, command) {
-	if (
-		(options.skillsDirs.length || options.skills === false) &&
-		!["create", "adopt", "plan", "skills", "grill"].includes(command)
-	)
-		throw new Error("Skill options are supported only for create, adopt, plan, skills and grill");
-	if (options.skillsDirs.some((path) => !path.trim()))
-		throw new Error("--skills-dir requires a nonempty directory");
-	if (options.mutation === false && !["create", "adopt", "plan"].includes(command))
-		throw new Error("--no-mutation is supported only for create, adopt and plan");
-}
+const REMOVED_FLAGS = {
+	"--accept": '--baseline --reason "..."',
+	"--no-beads": "--without beads",
+	"--no-graphify": "--without graphify",
+	"--no-ci": "--without ci",
+	"--no-skills": "--without skills",
+	"--no-mutation": "--without mutation",
+};
 
-function validateRecommendationOptions(options, command) {
-	if (
-		(options.catalog !== undefined || options.json || options.includeInstalled) &&
-		command !== "recommend"
-	)
-		throw new Error("--catalog, --json and --include-installed are supported only for recommend");
-	if (options.catalog !== undefined && !options.catalog.trim())
-		throw new Error("--catalog requires a nonempty file path");
-}
-
-function validateCommandScope(options, command) {
-	if (
-		["agent", "model", "plan", "no-build"].some((key) => options[key] !== undefined) &&
-		command !== "grill"
-	)
-		throw new Error("--agent, --model, --plan and --no-build are supported only for grill");
-	if (options.name && !["create", "plan"].includes(command))
-		throw new Error("--name is supported only for create and plan");
-	if (options.open && !["create", "plan", "adopt"].includes(command))
-		throw new Error("--open is supported only for create, plan and adopt");
-}
-
-function validateOptions(options, command) {
-	validateBaseline(options);
-	validateSetupOptions(options, command);
-	validateRecommendationOptions(options, command);
-	validateCommandScope(options, command);
-	if (options.open && options.open !== "vscode") throw new Error("--open supports vscode");
-	if (options.name !== undefined && !options.name.trim())
-		throw new Error("--name requires a nonempty application name");
-}
+const INTEGRATIONS = ["beads", "graphify", "ci", "skills", "mutation"];
 
 const OPTION_SCHEMA = {
 	help: { type: "boolean", short: "h" },
@@ -59,45 +30,126 @@ const OPTION_SCHEMA = {
 	manager: { type: "string" },
 	name: { type: "string" },
 	open: { type: "string" },
-	"no-baseline": { type: "boolean" },
 	baseline: { type: "boolean" },
+	"no-baseline": { type: "boolean" },
 	reason: { type: "string" },
-	accept: { type: "boolean" },
+	without: { type: "string" },
 	"install-tools": { type: "boolean" },
-	"no-beads": { type: "boolean" },
-	"no-graphify": { type: "boolean" },
-	"no-ci": { type: "boolean" },
-	"no-skills": { type: "boolean" },
-	"no-mutation": { type: "boolean" },
 	"skills-dir": { type: "string", multiple: true },
-	catalog: { type: "string" },
-	json: { type: "boolean" },
-	"include-installed": { type: "boolean" },
 	"allow-deprecated": { type: "boolean" },
 	"dry-run": { type: "boolean" },
 	agent: { type: "string" },
 	model: { type: "string" },
 	plan: { type: "string" },
 	"no-build": { type: "boolean" },
+	prune: { type: "boolean" },
+	suggest: { type: "boolean" },
+	catalog: { type: "string" },
+	json: { type: "boolean" },
+	"include-installed": { type: "boolean" },
+	fix: { type: "boolean" },
 };
+
+const SETUP = [
+	"profile",
+	"manager",
+	"baseline",
+	"no-baseline",
+	"reason",
+	"without",
+	"skills-dir",
+	"install-tools",
+	"open",
+	"dry-run",
+];
+
+/** Which options each command accepts; --help and --version work everywhere. */
+const ACCEPTS = {
+	create: [...SETUP, "name", "generator", "allow-deprecated"],
+	adopt: SETUP,
+	grill: ["agent", "model", "plan", "without", "no-build", "dry-run", "skills-dir"],
+	check: ["baseline", "reason", "prune"],
+	skills: ["suggest", "catalog", "include-installed", "json", "profile", "skills-dir", "dry-run"],
+	doctor: ["fix"],
+};
+
+function checkCommand(command) {
+	if (REMOVED_COMMANDS[command])
+		throw new Error(
+			`"${command}" was folded into another command. Use: ${REMOVED_COMMANDS[command]}`,
+		);
+	if (command !== undefined && command !== "help" && !commandNames.includes(command))
+		throw new Error(`Unknown command: ${command}. Run engineering --help.`);
+}
+
+function checkRemovedFlags(args) {
+	for (const arg of args)
+		if (REMOVED_FLAGS[arg]) throw new Error(`${arg} was replaced. Use: ${REMOVED_FLAGS[arg]}`);
+}
+
+function checkScope(values, command) {
+	const accepted = ACCEPTS[command] ?? [];
+	const where = command ? `engineering ${command}` : "engineering";
+	for (const key of Object.keys(values))
+		if (key !== "help" && key !== "version" && !accepted.includes(key))
+			throw new Error(`--${key} isn't an option for ${where}. See ${where} --help.`);
+}
+
+/** --without beads,ci becomes { beads: false, ci: false }; grill can only leave out beads. */
+function integrations(without, command) {
+	const left = without === undefined ? [] : without.split(",").map((item) => item.trim());
+	const allowed = command === "grill" ? ["beads"] : INTEGRATIONS;
+	const unknown = left.find((item) => !allowed.includes(item));
+	if (unknown !== undefined)
+		throw new Error(`--without takes ${allowed.join(", ")}; got "${unknown}"`);
+	return Object.fromEntries(INTEGRATIONS.map((name) => [name, !left.includes(name)]));
+}
+
+function checkBaseline(values) {
+	if (!values.baseline) return;
+	if (!values.reason?.trim()) throw new Error("--baseline requires an explicit --reason");
+	if (values["no-baseline"]) throw new Error("Choose --baseline or --no-baseline, not both");
+	if (values.prune) throw new Error("Choose --baseline or --prune, not both");
+}
+
+/** Catalog, JSON and installed-skill options only shape `skills --suggest` output. */
+function checkSuggest(values, command) {
+	if (command !== "skills" || values.suggest) return;
+	const key = ["catalog", "include-installed", "json"].find((name) => values[name] !== undefined);
+	if (key) throw new Error(`--${key} needs --suggest`);
+}
+
+const blank = (value) => value !== undefined && !value.trim();
+
+function checkShapes(values) {
+	if (blank(values.catalog)) throw new Error("--catalog requires a nonempty file path");
+	if ((values["skills-dir"] ?? []).some(blank))
+		throw new Error("--skills-dir requires a nonempty directory");
+	if (values.open !== undefined && values.open !== "vscode")
+		throw new Error("--open supports vscode");
+	if (blank(values.name)) throw new Error("--name requires a nonempty application name");
+}
 
 export function parseOptions(args) {
 	const separator = args.indexOf("--");
-	const forwarded = separator < 0 ? [] : args.slice(separator + 1);
+	const own = separator < 0 ? args : args.slice(0, separator);
+	checkRemovedFlags(own);
 	const { values, positionals } = parseArgs({
-		args: separator < 0 ? args : args.slice(0, separator),
+		args: own,
 		allowPositionals: true,
 		options: OPTION_SCHEMA,
 	});
+	const command = positionals[0];
+	checkCommand(command);
+	if (command !== "help") checkScope(values, command);
+	checkBaseline(values);
+	checkSuggest(values, command);
+	checkShapes(values);
 	const options = {
 		...values,
-		forwarded,
+		...integrations(values.without, command),
+		forwarded: separator < 0 ? [] : args.slice(separator + 1),
 		installTools: Boolean(values["install-tools"]),
-		beads: !values["no-beads"],
-		graphify: !values["no-graphify"],
-		ci: !values["no-ci"],
-		skills: !values["no-skills"],
-		mutation: !values["no-mutation"],
 		skillsDirs: values["skills-dir"] ?? [],
 		allowDeprecated: Boolean(values["allow-deprecated"]),
 		includeInstalled: Boolean(values["include-installed"]),
@@ -105,78 +157,5 @@ export function parseOptions(args) {
 		noBaseline: Boolean(values["no-baseline"]),
 		build: !values["no-build"],
 	};
-	validateOptions(options, positionals[0]);
-	return { command: positionals[0] ?? "help", targets: positionals.slice(1), options };
-}
-
-const help = `engineering — your usual tools, ready in the next project
-
-Commands:
-  list                                      Browse the available project types
-  create [profile] [name]                    Create an app; ask for anything omitted
-  adopt [directory] --profile generic        Add your tools to an existing project
-  plan [profile] [name]                      Preview creation without making changes
-  skills [directory]                        Set up or restore the project's skills
-  recommend [directory]                     Suggest optional skills without installing
-  grill [prompt] [directory]                Get grilled on work for an existing project, then ticket and build it
-  check [directory]                         Check the code without changing it
-  baseline [directory] --accept --reason X   Remember approved existing issues
-  prune [directory]                         Remove allowances for issues you've fixed
-  doctor                                    See which tools are ready or missing
-  setup                                     Install the missing tools
-
-Create/adopt options:
-  --name NAME            Set the app name; default to a matching child folder
-  --open vscode          Open VS Code while the last checks run
-  --baseline --reason X  Remember existing issues after the native checks pass
-  --no-baseline          Don't create a baseline or ask about one
-  --manager npm|pnpm|yarn|bun  Choose a manager without replacing an existing choice
-  --install-tools        Install missing tools before setup
-  --no-beads --no-graphify --no-ci --no-skills  Leave out what you don't need
-  --no-mutation          Leave out default StrykerJS setup (existing tooling is preserved)
-  --skills-dir PATH      Reuse another local skill collection (repeatable)
-  --allow-deprecated     Allow a legacy Create React App project
-  --dry-run              Show the plan without changing files or opening an editor
-
-Recommendation options:
-  --catalog FILE         Overlay a curated favorites catalog
-  --include-installed    Also show matching favorites already available locally
-  --json                 Print the recommendation report as JSON
-  --profile PROFILE      Supply project context when no stored profile exists
-
-Grill options:
-  --agent omp|claude|PATH  Agent that grills and builds (default omp)
-  --model MODEL          Model for that agent
-  --plan FILE            Skip the grilling and use a saved plan ({ spec, plan, transcript?, tickets? })
-  --dry-run              Grill, then show where the brief would go without writing it
-  --no-build             Stop after the tickets instead of starting the build agent
-  --no-beads             Write TICKETS.md only; don't create beads
-  The directory (default: current) must already hold a project; grill never creates one. Make it
-  first with create or adopt. With no prompt file, grill asks what to grill you about. Rerun with
-  the same prompt or topic to resume.
-
-Start: engineering create
-Or:    engineering create react-vite MyApp
-
-Advanced creation:
-  create --name "My App" --profile react-vite  Derive the folder my-app
-  create react-vite ./web --name "My App"     Keep a separate folder and display name
-  create my-app --generator pkg              Use another npm project generator
-  create react-vite .                        Use the current directory only if empty
-
-A known profile by itself asks for a name. Other names ask for a profile;
---profile selects one directly. Explicit paths keep their destination.
-Without a terminal, pass the name and profile; previews always require a name.
-
-Some starters come with code that doesn't meet your limits. In an interactive
-terminal, we'll ask whether to remember those issues in a baseline. Without
-your approval, they still need fixing. New issues always need fixing.
-
-Shared engineering skills and matching library guidance are set up for you.
-Arguments after -- go to the upstream generator, apart from conflicting safety flags.
-Your framework keeps its own application structure and tooling.
-`;
-
-export function usage() {
-	return help;
+	return { command: command ?? "help", targets: positionals.slice(1), options };
 }

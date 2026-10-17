@@ -12,7 +12,7 @@ export function requireProject(dir) {
 	if (existsSync(dir) && statSync(dir).isDirectory() && readdirSync(dir).length) return;
 	const shown = relative(process.cwd(), dir) || ".";
 	throw new Error(`${shown} has no project yet. grill plans work inside an existing project; it doesn't create one.
-Create one:      engineering create <profile> ${shown}   (engineering list shows the profiles)
+Create one:      engineering create <profile> ${shown}   (engineering create --help lists the profiles)
 Or bring one in: engineering adopt ${shown} --profile <profile>
 Then run grill again.`);
 }

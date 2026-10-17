@@ -39,7 +39,7 @@ async function settle(jobs) {
 
 function policy(root, options) {
 	const args = [join(packageRoot, "bin/engineering.mjs")];
-	if (options.baseline) args.push("baseline", root, "--accept", "--reason", options.reason);
+	if (options.baseline) args.push("check", root, "--baseline", "--reason", options.reason);
 	else args.push("check", root);
 	return run(process.execPath, args, root, projectEnvironment(root));
 }

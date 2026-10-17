@@ -6,7 +6,7 @@ import { appendIgnores, integrate, installMissingTools, toolStatus } from "./int
 import { projectEnvironment } from "./integrations/process.mjs";
 import { selectManager } from "./managers.mjs";
 import { dependencySpec, packageManifest, packInto } from "./package-install.mjs";
-import { projectFiles, scripts } from "./project-files.mjs";
+import { projectFiles, retiredScripts, scripts } from "./project-files.mjs";
 import { available, run } from "./process.mjs";
 import { requireProfileRuntime } from "./profiles.mjs";
 import { run as runCommand } from "./integrations/process.mjs";
@@ -29,7 +29,7 @@ export async function prepareTools(options) {
 	);
 	if (missing.length)
 		throw new Error(
-			`Missing or unhealthy tools: ${missing.map((tool) => tool.name).join(", ")}. Run engineering setup.`,
+			`Missing or unhealthy tools: ${missing.map((tool) => tool.name).join(", ")}. Run engineering doctor --fix.`,
 		);
 	if (options.open && !available("code"))
 		throw new Error("VS Code CLI 'code' is unavailable; install it before --open vscode.");
@@ -58,6 +58,8 @@ function ensureRepository(root, options) {
 
 function mergedScripts(existing = {}) {
 	const result = { ...existing };
+	for (const [name, command] of Object.entries(retiredScripts))
+		if (result[name] === command) delete result[name];
 	for (const [name, command] of Object.entries(scripts)) {
 		if (result[name] && result[name] !== command)
 			throw new Error(`Preserving conflicting script: ${name}`);

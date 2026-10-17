@@ -209,7 +209,7 @@ async function requireTools(beads, graphify) {
 	);
 	if (unavailable.length)
 		throw new Error(
-			`Required tools unavailable: ${unavailable.map(({ name }) => name).join(", ")}. Run engineering setup (or use --install-tools) explicitly; no integration files were changed.`,
+			`Required tools unavailable: ${unavailable.map(({ name }) => name).join(", ")}. Run engineering doctor --fix (or use --install-tools) explicitly; no integration files were changed.`,
 		);
 }
 

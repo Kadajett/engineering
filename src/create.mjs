@@ -3,13 +3,14 @@ import { adopt, prepareTools } from "./adopt.mjs";
 import { chooseBaseline } from "./baseline-choice.mjs";
 import { generate } from "./generate.mjs";
 import { projectSlug } from "./generation-names.mjs";
+import { profileList } from "./help.mjs";
 import { getProfile, profiles, requireProfileRuntime } from "./profiles.mjs";
 import { Stages } from "./stages.mjs";
 
 async function selectProfile() {
 	const choices = profiles.filter((profile) => profile.generator);
 	if (!process.stdin.isTTY || !process.stdout.isTTY)
-		throw new Error("Non-interactive create requires a profile. Run engineering list.");
+		throw new Error(`Non-interactive create requires a profile:\n${profileList()}`);
 	choices.forEach((profile, index) => console.log(`${index + 1}. ${profile.label}`));
 	const prompt = createInterface({ input: process.stdin, output: process.stdout });
 	try {
@@ -46,8 +47,7 @@ async function creationProfile(profileId, options) {
 		};
 	}
 	if (profileId || options.profile) return getProfile(profileId ?? options.profile);
-	if (options.dryRun)
-		throw new Error("Preview requires a profile. Pass --profile or run engineering list.");
+	if (options.dryRun) throw new Error(`Preview requires a profile:\n${profileList()}`);
 	return selectProfile();
 }
 

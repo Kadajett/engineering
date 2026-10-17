@@ -3,9 +3,13 @@ import { managedBlock, text } from "./files.mjs";
 
 export const scripts = {
 	"engineering:check": "engineering check",
+	"engineering:skills": "engineering skills",
+};
+
+/** Scripts earlier versions added for commands folded into check; adopt removes them when untouched. */
+export const retiredScripts = {
 	"engineering:baseline": "engineering baseline",
 	"engineering:prune": "engineering prune",
-	"engineering:skills": "engineering skills",
 };
 
 function agentInstructions(profile) {
@@ -16,7 +20,7 @@ This project uses @kadajett/engineering with the ${profile.id} profile.
 - Start with .engineering/config.json: it lists the source files, TypeScript projects, code limits, and import boundaries we check.
 - Run the package manager's engineering:check script as well as the framework's own lint, format, build, and tests. They catch different problems.
 - Keep the framework's app structure and source intact during setup. The checker belongs in its package, not copied into the app.
-- If we're keeping known quality issues, record them once with engineering baseline --accept --reason "why we're keeping them". Don't reset the baseline to make new failures pass. Run engineering prune after fixing old issues to remove their allowances.
+- If we're keeping known quality issues, record them once with engineering check --baseline --reason "why we're keeping them". Don't reset the baseline to make new failures pass. Run engineering check --prune after fixing old issues to remove their allowances.
 - Keep the project's existing package manager, formatter, linter, and TypeScript module/runtime settings.
 - Tests follow the same complexity, nesting, and parameter limits as app code, but have no function-length limit and may be up to 1000 lines per file. Generated, vendor, and build files are excluded through configuration.
 - When adding or changing tests, run test:mutation if available and inspect stryker.config.json for scope and the score threshold. Surviving mutants point to missing behavioral assertions; add meaningful tests rather than weakening the threshold. Mutation runs are separate from setup and the fast quality gate.
@@ -52,7 +56,7 @@ export function projectFiles(root, profile, manager, options) {
 		const expected = workflow(manager, options.nativeScripts ?? { prepare: [], checks: [] });
 		const original = text(root, path);
 		if (original && original !== expected)
-			throw new Error(`Preserving existing ${path}; review it or use --no-ci`);
+			throw new Error(`Preserving existing ${path}; review it or use --without ci`);
 		files.set(path, expected);
 	}
 	return files;

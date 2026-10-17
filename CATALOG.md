@@ -2,7 +2,7 @@
 
 "engineering" runs an upstream project generator, then adds shared quality checks and optional Beads, Graphify, skills, and CI setup. The application comes from upstream, not a local collection of templates. Express stays JavaScript, and Epicflare keeps its own architecture.
 
-The commands below were checked against primary documentation and published CLI help on **2026-09-09**. Most generators use `@latest`, so their prompts, templates, and requirements can change. OpenTUI pins its generator; Workers AI pins both C3 and a template revision. Before running an unpinned generator, "engineering" resolves its version and records the exact command in `.engineering/state.json`. Use `engineering plan` to see what will run.
+The commands below were checked against primary documentation and published CLI help on **2026-09-09**. Most generators use `@latest`, so their prompts, templates, and requirements can change. OpenTUI pins its generator; Workers AI pins both C3 and a template revision. Before running an unpinned generator, "engineering" resolves its version and records the exact command in `.engineering/state.json`. Add `--dry-run` to `engineering create` to see what will run.
 
 ## Choose once
 
@@ -22,7 +22,7 @@ engineering create workers-ai ./MyChat --name "My Chat" --open vscode
 engineering adopt . --profile generic
 ```
 
-Arguments after `--` go to the upstream tool as separate arguments, not as a shell command. Use that tool's options for framework-specific choices. To preview without generating anything, replace `create` with `plan`.
+Arguments after `--` go to the upstream tool as separate arguments, not as a shell command. Use that tool's options for framework-specific choices. To preview without generating anything, add `--dry-run`.
 
 `engineering create hono-node --name "My API"` creates `./my-api`. A positional name such as `my-api` is already a child destination; explicit paths remain supported. Without a supplied name, interactive creation asks for one instead of using the current folder.
 

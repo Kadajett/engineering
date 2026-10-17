@@ -43,7 +43,7 @@ Commit `.engineering/skills.json`: it records pinned restoration sources, local 
 engineering skills .                         # restore links after a clone or dependency change
 engineering skills . --dry-run               # preview without downloads or file changes
 engineering create hono-node my-api --skills-dir ~/my-skills
-engineering create workers-ai my-worker --no-skills
+engineering create workers-ai my-worker --without skills
 ```
 
 You can repeat `--skills-dir` and point it at either a flat skill collection or an upstream repository root. `engineering skills` works without re-adopting the project, changing its quality baseline, or upgrading the installed engineering package.
@@ -52,13 +52,13 @@ Generated agent instructions explain when to load matching skills and refresh th
 
 ### Optional skill recommendations
 
-`engineering recommend [directory]` suggests curated extras without installing skills, writing project files, adopting the project, querying a service, or executing skill content.
+`engineering skills [directory] --suggest` suggests curated extras without installing skills, writing project files, adopting the project, querying a service, or executing skill content.
 
 ```bash
-engineering recommend .
-engineering recommend ./apps/api --profile hono-node
-engineering recommend . --include-installed
-engineering recommend . --catalog ~/favorites.json --json
+engineering skills . --suggest
+engineering skills ./apps/api --suggest --profile hono-node
+engineering skills . --suggest --include-installed
+engineering skills . --suggest --catalog ~/favorites.json --json
 ```
 
 The built-in catalog is separate from automatic selection: six optional Matt Pocock workflows (research, domain-modeling, prototype, grilling, writing-for-agents, code-review), Cursor Team Kit review/verification/PR preparation, Dietrich Gebert's Ponytail writing and complexity review, TypeScript guidance, Apollo's Rust best practices, pytest, and Clerk testing/webhooks. Sources link to inspected `SKILL.md` files at immutable revisions. Descriptions call out opinionated conventions or setup requirements; particularly, code-review's upstream issue-tracker integration must respect Beads rather than introduce another tracker.
@@ -126,7 +126,7 @@ Skills aren't the only useful source. The managed `AGENTS.md` section also inclu
 
 Workers AI and Agents don't imply Sentry. Its Cloudflare docs are selected only for an actual `@sentry/cloudflare` dependency. The maintained Sentry instrumentation workflow is not installed automatically. AI Gateway is optional, and no telemetry SDK, export, sampling, payload-capture, or Wrangler setting is changed by guidance setup.
 
-Selection follows dependency fields and the selected/stored profile, not source scanning or Wrangler parsing. Use `engineering skills . --profile workers-ai` for a native AI-binding app without a useful stored profile or AI package signal. Run the command again after dependency changes to refresh the generated reference sections. `--no-skills` skips skills and reference setup without removing existing files.
+Selection follows dependency fields and the selected/stored profile, not source scanning or Wrangler parsing. Use `engineering skills . --profile workers-ai` for a native AI-binding app without a useful stored profile or AI package signal. Run the command again after dependency changes to refresh the generated reference sections. `--without skills` skips skills and reference setup without removing existing files.
 
 The [AI Workers guide](AI-WORKERS.md) explains the exact signals and sources. It calls out missing versus zero usage, sampled traces versus billing, AI SDK major-version differences, stream completion/cancellation, and content-collection defaults. Official links remain live; installed types and version-matched docs take precedence over newer online examples.
 
@@ -137,7 +137,7 @@ engineering create                           # choose profile, then name
 engineering create hono-node                 # asks for a name
 engineering create hono-node --name "My API"  # creates ./my-api
 engineering create my-app                    # name supplied; choose profile
-engineering plan hono-node my-api            # preview without network access or writes
+engineering create hono-node my-api --dry-run  # preview without network access or writes
 engineering create hono-node my-api
 engineering create express my-server -- --no-view --git
 engineering create react-vite my-spa
@@ -164,7 +164,7 @@ With no destination, a prompted name or `--name` supplies a slugged child direct
 
 New Beads databases use a safe prefix derived from the folder name too, so spaces and punctuation don't break setup. Beads handles numeric prefixes according to its own naming rules. Existing databases and issue IDs stay unchanged.
 
-`--open vscode` uses the `code` CLI to open the workspace after configuration and integrations are ready, while final checks finish. It doesn't start a development server. `plan` and `--dry-run` don't prompt, open an editor, install dependencies, or use the network.
+`--open vscode` uses the `code` CLI to open the workspace after configuration and integrations are ready, while final checks finish. It doesn't start a development server. `--dry-run` doesn't prompt, open an editor, install dependencies, or use the network.
 
 Workers AI pins a verified C3/template pair and handles one known dependency conflict, explained in the [catalog](../CATALOG.md#other-official-cloudflare-categories). OpenTUI pins its generator version. Other profiles follow upstream generator releases. There are no local framework templates or application-logic patches.
 
@@ -179,7 +179,7 @@ A custom generator receives the target as its first argument. If its command nee
 ## Grill, ticket and build
 
 ```bash
-engineering grill [prompt.md|.txt|.pdf] [directory] [--agent omp|claude|PATH] [--model MODEL] [--plan FILE] [--no-build] [--no-beads] [--dry-run]
+engineering grill [prompt.md|.txt|.pdf] [directory] [--agent omp|claude|PATH] [--model MODEL] [--plan FILE] [--no-build] [--without beads] [--dry-run]
 ```
 
 **What to grill about.** A prompt file supplies the description; a `.pdf` needs `pdftotext`. Without one, `grill` asks "What should I grill you about?" in the terminal (or takes `spec` from `--plan`). A lone argument that's an existing file is the prompt; a directory, or any argument alongside `--plan`, is the directory.
@@ -203,7 +203,7 @@ engineering adopt /path/to/repo --profile generic --dry-run
 engineering adopt /path/to/repo --profile next
 
 # After reviewing the existing issues and running native checks:
-engineering baseline /path/to/repo --accept --reason 'Reviewed the starter functions over the limits'
+engineering check /path/to/repo --baseline --reason 'Reviewed the starter functions over the limits'
 ```
 
 A baseline remembers quality problems the project already has so that new problems still fail. For example, you might accept a starter's existing 60-line function while keeping the 50-line limit for your work. That isn't permission to add more long functions, enlarge the old violation, or change the function without another check. Compiler, analyzer, and configuration errors must be fixed; a baseline can't hide them. A changed source file, different quality configuration, or incompatible analyzer version can also make an old allowance stop matching.
@@ -215,9 +215,9 @@ engineering create epicflare my-app --baseline --reason 'Reviewed the upstream s
 engineering adopt /path/to/repo --profile generic --baseline --reason 'Reviewed the existing code'
 ```
 
-A baseline is saved only after native checks pass. It is never copied from this repository or created without approval, and an existing one is never overwritten. If a project already has a baseline, re-adopt without `--baseline`. Run `engineering prune` to remove or shrink allowances for issues you've fixed; it doesn't add new approvals.
+A baseline is saved only after native checks pass. It is never copied from this repository or created without approval, and an existing one is never overwritten. If a project already has a baseline, re-adopt without `--baseline`. Run `engineering check --prune` to remove or shrink allowances for issues you've fixed; it doesn't add new approvals.
 
-Adoption keeps existing scripts and adds `engineering:check`, `engineering:baseline`, `engineering:prune`, and `engineering:skills`. It prepares the project and runs native verification before reporting success:
+Adoption keeps existing scripts and adds `engineering:check` and `engineering:skills`. The `engineering:baseline` and `engineering:prune` scripts from versions before 0.7.0 are removed when they still hold the values engineering wrote; edited ones stay. It prepares the project and runs native verification before reporting success:
 
 - Workers AI runs `cf-typegen`, then its upstream `check`: `tsc --noEmit && wrangler deploy --dry-run`.
 - Other profiles run `cf-typegen` when present, then available `typecheck`, `type-check`, `check`, `lint`, and `build` scripts. For the current OpenTUI starters, that's `typecheck`.
@@ -225,7 +225,7 @@ Adoption keeps existing scripts and adds `engineering:check`, `engineering:basel
 
 Conflicting reserved scripts, managed files, or package-manager lockfiles stop adoption rather than being replaced. `--manager npm|pnpm|yarn|bun` chooses a manager only when it agrees with the project's existing declaration and lockfile.
 
-Use `--no-beads`, `--no-graphify`, `--no-ci`, or `--no-skills` for integrations you don't want. Missing tools are reported before adoption; `--install-tools` allows their installation. Adoption works at a repository root, not a nested folder using another project's hooks. Worktrees, shared external hooks, and conflicting custom hooks need manual integration so other projects' setup isn't overwritten.
+Use `--without beads,graphify,ci,skills,mutation` (any subset) for integrations you don't want. Missing tools are reported before adoption; `--install-tools` allows their installation. Adoption works at a repository root, not a nested folder using another project's hooks. Worktrees, shared external hooks, and conflicting custom hooks need manual integration so other projects' setup isn't overwritten.
 
 If a command fails, completed steps and generated files are kept. Generator, package-manager, and native-tool operations aren't rolled back as one transaction. Fix the reported problem, finish any incomplete native setup, and use `adopt` to continue. `create` still needs an empty destination; don't run a generator over the partially created app.
 
@@ -253,7 +253,7 @@ Mutation setup is **enabled by default** for create/adopt across the current Jav
 
 The planner reuses recognized one-shot **unit** test commands, preserving their flags and test configuration. A single plain `vitest run` with a simple Vitest 2+ version declaration gets the matching pinned native Vitest plugin and per-test coverage analysis. Other recognized host runners, including Bun and Node's test runner, use Stryker's built-in command adapter with coverage analysis off. Multiple eligible commands run in sequence per mutant. Complex version declarations or nonstandard Vitest flags conservatively retain their exact command rather than imposing plugin options.
 
-Existing Stryker packages, scripts, or root configuration prevent a second setup; even customized configuration remains untouched on repeated adoption. Mutation script lifecycle hooks are also preserved, not attached to a newly generated script. `--no-mutation` suppresses additions without removing existing tools. Dry-run output shows the selected adapter or why no setup was added.
+Existing Stryker packages, scripts, or root configuration prevent a second setup; even customized configuration remains untouched on repeated adoption. Mutation script lifecycle hooks are also preserved, not attached to a newly generated script. `--without mutation` suppresses additions without removing existing tools. Dry-run output shows the selected adapter or why no setup was added.
 
 Default policy:
 
@@ -276,7 +276,7 @@ The script is deliberately separate from `test:ci`, `engineering:check`, setup v
 
 #### Other Stryker languages
 
-Language detection by `engineering recommend` is broader than project creation/adoption. The latter currently requires `package.json`; it does not configure .NET or Scala builds. Stryker is not a universal arbitrary-language mutator.
+Language detection by `engineering skills --suggest` is broader than project creation/adoption. The latter currently requires `package.json`; it does not configure .NET or Scala builds. Stryker is not a universal arbitrary-language mutator.
 
 | Language | Upstream engine | Project-local integration, not automatically applied here |
 | --- | --- | --- |
@@ -295,7 +295,7 @@ Primary references: [StrykerJS configuration](https://github.com/stryker-mutator
 - `.engineering/state.json`: the profile, generator command, package manager, installation fingerprint, engineering version, and last completed phase.
 - `.engineering/vendor/kadajett-engineering-<version>.tgz`: the engineering package as a portable devDependency archive. Commit it with the manifest and lockfile. Managed `.gitignore` exceptions allow it even if the starter ignores `*.tgz`, so CI and other machines can install it without this checkout.
 - Managed sections in `AGENTS.md` and `CLAUDE.md`, alongside any unrelated instructions already there.
-- `.github/workflows/engineering.yml`: locked dependency installation, the same preparation and native checks, then engineering checks. Existing framework workflows remain. Use `--no-ci` if you don't want a GitHub Actions workflow.
+- `.github/workflows/engineering.yml`: locked dependency installation, the same preparation and native checks, then engineering checks. Existing framework workflows remain. Use `--without ci` if you don't want a GitHub Actions workflow.
 - Optional Beads database and agent hooks, plus Graphify skills, hooks, and a code graph. Every project has its own state. Beads initialization may create a metadata commit; "engineering" doesn't configure a Git remote.
 
 ### Beads across Claude, Codex, Pi, and OMP
@@ -315,7 +315,7 @@ The archive contains no framework source, per-project baselines, tracking databa
 ```bash
 npm run engineering:check     # use your project's package manager
 engineering check /path/to/repo
-engineering prune /path/to/repo
+engineering check /path/to/repo --prune
 ```
 
 The default limits are:

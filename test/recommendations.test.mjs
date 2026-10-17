@@ -21,7 +21,7 @@ const skill = (name) =>
 	`---\nname: ${name}\ndescription: A locally installed favorite.\n---\nGuidance.\n`;
 
 function invoke(root, home, args = []) {
-	return spawnSync(process.execPath, [cli, "recommend", root, "--json", ...args], {
+	return spawnSync(process.execPath, [cli, "skills", root, "--suggest", "--json", ...args], {
 		encoding: "utf8",
 		timeout: 10000,
 		env: {

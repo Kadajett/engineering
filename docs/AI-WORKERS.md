@@ -26,7 +26,7 @@ Selection uses direct dependencies, dev dependencies, optional dependencies, pee
 engineering skills . --profile workers-ai
 ```
 
-Run `engineering skills .` again after dependency changes; `--dry-run` previews the skills and reference guidance. Existing local skills and pinned fallback revisions are preserved. Removing a matching dependency removes its generated reference section on refresh, unless another dependency or the retained profile still selects it. `--no-skills` skips this setup too; it isn't an uninstall command.
+Run `engineering skills .` again after dependency changes; `--dry-run` previews the skills and reference guidance. Existing local skills and pinned fallback revisions are preserved. Removing a matching dependency removes its generated reference section on refresh, unless another dependency or the retained profile still selects it. `--without skills` skips this setup too; it isn't an uninstall command.
 
 This installs guidance, not telemetry. It doesn't edit Wrangler, install monitoring SDKs or MCP servers, add a DSN, choose a gateway, enable payload capture, or send test events. Official docs are live links, not version-pinned downloads. Read the project's installed types and version-matched docs before copying an example.
 

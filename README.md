@@ -24,10 +24,12 @@ Next, check the supporting tools and install any you're missing:
 
 ```bash
 engineering doctor
-engineering setup
+engineering doctor --fix
 ```
 
-`setup` asks before installing Beads, Graphify, and Lizard. It needs [uv](https://docs.astral.sh/uv/getting-started/installation/) for missing Python tools; it won't install Node or uv, use sudo, or change your existing apps. The quality checks require **Lizard 1.24.0**. Beads and Graphify are optional for each project.
+`doctor --fix` asks before installing Beads, Graphify, and Lizard. It needs [uv](https://docs.astral.sh/uv/getting-started/installation/) for missing Python tools; it won't install Node or uv, use sudo, or change your existing apps. The quality checks require **Lizard 1.24.0**. Beads and Graphify are optional for each project.
+
+Six commands cover everything: `create`, `adopt`, `grill`, `check`, `skills` and `doctor`. `engineering <command> --help` shows each one's options; `create` and `adopt` share the same settings.
 
 ## Create a project
 
@@ -52,10 +54,10 @@ Before generation, you'll be asked whether to save a baseline of problems the st
 
 Setup doesn't deploy anything or call an AI model.
 
-See every project type with `engineering list`, or preview a command without downloads or file changes:
+`engineering create --help` lists every project type. `--dry-run` previews a command without downloads or file changes:
 
 ```bash
-engineering plan workers-ai ./MyChat --name "My Chat"
+engineering create workers-ai ./MyChat --name "My Chat" --dry-run
 ```
 
 ## Get grilled before you build
@@ -75,7 +77,7 @@ engineering grill . --plan /tmp/grill-plan.json    # use a plan an agent already
 When nothing is left open, it shows the shared understanding. Press Enter to accept it, or type what's wrong and the grilling continues. Then `grill`:
 
 1. Writes `docs/grill/<topic>/`: SPEC, DECISIONS (each decision with its alternatives and your reason; missing reasons are flagged), TRANSCRIPT, and BUILD (instructions for the build agent). An existing AGENTS.md gets a pointer to BUILD.md.
-2. Has the agent break the plan into vertical-slice tickets in dependency order (TICKETS.md), each naming the files it owns so ready tickets can be built in parallel, and creates them as beads with their dependencies. A folder without Beads gets one; `--no-beads` keeps just TICKETS.md.
+2. Has the agent break the plan into vertical-slice tickets in dependency order (TICKETS.md), each naming the files it owns so ready tickets can be built in parallel, and creates them as beads with their dependencies. A folder without Beads gets one; `--without beads` keeps just TICKETS.md.
 3. Starts the build agent in your terminal as an orchestrator: it hands ready tickets to parallel subagents, runs the project's checks after each batch, closes beads only when their acceptance passes, and keeps going until every bead is closed, finishing with a TALK-TRACK.md you can walk through. `--no-build` stops before this.
 
 When the project has a `test:mutation` script (create and adopt set one up), BUILD.md and the tickets require it to pass its threshold before the build is done.
@@ -114,9 +116,9 @@ Generated agent instructions explain when to load skills, but making them availa
 ### Recommend extras without installing them
 
 ```bash
-engineering recommend .                     # general and matching optional skills
-engineering recommend . --include-installed # also show favorites you already have
-engineering recommend . --catalog ~/favorites.json --json
+engineering skills . --suggest                     # general and matching optional skills
+engineering skills . --suggest --include-installed # also show favorites you already have
+engineering skills . --suggest --catalog ~/favorites.json --json
 ```
 
 Recommendations are separate from the automatic installs. The selection includes Cursor Team Kit's **thermo-nuclear-code-quality-review** (the requested thermonuclear review), Dietrich Gebert's **ponytail** minimal-code workflow, focused complexity review, evidence-based verification, and PR preparation. Planning/research skills, TypeScript, Rust and pytest guidance, and Clerk testing/webhooks remain available. Every suggestion explains its match and links to an inspected `SKILL.md` at an immutable commit; see [verified names, sources, and caveats](docs/REFERENCE.md#verified-review-and-writing-extras).
@@ -147,7 +149,7 @@ The `test` command is strict. For added defaults, `test:ci` discovers tests usin
 
 ### Mutation testing by default
 
-Creation and adoption add [StrykerJS](https://stryker-mutator.io/docs/stryker-js/) **10.0.0**, `stryker.config.json`, and `test:mutation` when a compatible one-shot unit test command is available. This covers the platform's JavaScript/TypeScript profiles, including Bun/OpenTUI. Existing Stryker setup is preserved; `--no-mutation` skips new setup.
+Creation and adoption add [StrykerJS](https://stryker-mutator.io/docs/stryker-js/) **10.0.0**, `stryker.config.json`, and `test:mutation` when a compatible one-shot unit test command is available. This covers the platform's JavaScript/TypeScript profiles, including Bun/OpenTUI. Existing Stryker setup is preserved; `--without mutation` skips new setup.
 
 ```bash
 npm run test:mutation   # use the project's package manager
@@ -167,23 +169,22 @@ engineering adopt . --profile generic
 
 Your scripts, framework configuration, and application code stay yours. Adoption adds engineering commands and runs native checks plus recognized one-shot tests. It doesn't install a new runner into an existing project or launch an arbitrary test watcher; any unrecognized test command still needs your review.
 
-A few useful options:
+The same settings work for `create` and `adopt`:
 
 | Option | What it does |
 | --- | --- |
-| `--name "My App"` | Creates `./my-app` when no destination is supplied; otherwise sets the application name separately. |
+| `--name "My App"` | `create` only: creates `./my-app` when no destination is supplied; otherwise sets the application name separately. |
 | `--open vscode` | Opens the workspace while the final checks finish. |
 | `--no-baseline` | Skips the baseline question and accepts no new exceptions. |
 | `--baseline --reason "..."` | Saves the starter's existing issues with your approval reason, after native checks pass. |
-| `--no-beads --no-graphify --no-ci --no-skills` | Leaves out the integrations you don't want. |
-| `--no-mutation` | Skips new StrykerJS setup without removing existing mutation tooling. |
+| `--without beads,graphify,ci,skills,mutation` | Leaves out any integrations you don't want. Leaving out `mutation` skips new StrykerJS setup without removing existing mutation tooling. |
 | `--dry-run` | Shows the plan without file changes or downloads. |
 
 ## What gets enforced?
 
 The default limits are cyclomatic complexity **10**, function NLOC **50**, parameters **4**, nesting **4**, cognitive complexity **15**, and ordinary file length **300** lines. Generated and vendored output is excluded; tests have their own length allowances. TypeScript checks keep the framework's runtime settings and add strictness.
 
-You can adjust the scope and limits in `.engineering/config.json`. A project's approved baseline is stored separately and never grows automatically. `engineering prune .` removes allowances you've fixed; it doesn't approve new ones. Each project's baseline, Beads data, and Graphify graph are independent.
+You can adjust the scope and limits in `.engineering/config.json`. A project's approved baseline is stored separately and never grows automatically. `engineering check --baseline --reason "..."` records one; `engineering check --prune` removes allowances you've fixed and never approves new ones. Each project's baseline, Beads data, and Graphify graph are independent.
 
 ## More detail
 
