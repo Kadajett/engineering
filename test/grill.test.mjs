@@ -1,10 +1,17 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { chmodSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import {
+	chmodSync,
+	existsSync,
+	mkdirSync,
+	readdirSync,
+	readFileSync,
+	writeFileSync,
+} from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
-import { defaultDestination, plannableProfiles, writeBrief } from "../src/grill.mjs";
+import { writeBrief } from "../src/grill.mjs";
 import { agentSpec, runAgent } from "../src/grill/agent.mjs";
 import { grillSession, readState } from "../src/grill/followthrough.mjs";
 import { runGrill } from "../src/grill/session.mjs";
@@ -13,8 +20,7 @@ import { checkTickets, createBeads } from "../src/grill/tickets.mjs";
 import { fixture } from "./fixture.mjs";
 
 const cli = fileURLToPath(new URL("../bin/engineering.mjs", import.meta.url));
-const profileIds = plannableProfiles().map((profile) => profile.id);
-const newTarget = { mode: "new", profiles: plannableProfiles() };
+const context = "Files (two levels):\nsrc/\npackage.json";
 
 const layoutTurn = {
 	done: false,
@@ -26,7 +32,6 @@ const scopeTurn = { done: false, question: "Which stretch items?", recommended: 
 const plan = {
 	done: true,
 	summary: "One Next.js app with route handlers and server components; zod at every boundary.",
-	projects: [{ dir: ".", profile: "next" }],
 	decisions: [
 		{
 			title: "Framework",
@@ -61,11 +66,11 @@ test("the agent gets each answer as typed, next to the options it refers to", as
 	const { agent, prompts } = scriptedAgent([layoutTurn, scopeTurn, plan]);
 	const result = await runGrill({
 		spec: "# Board",
-		target: newTarget,
+		context,
 		agent,
 		io: scriptedIo(["2 sorry", ""]),
 	});
-	assert.equal(result.plan.projects[0].profile, "next");
+	assert.equal(result.plan.summary, plan.summary);
 	assert.equal(result.transcript[0].answer, "2 sorry");
 	assert.match(prompts[1], /\n2\. web \+ api\n/);
 	assert.match(prompts[1], /A1: 2 sorry/);
@@ -76,7 +81,7 @@ test("the agent gets each answer as typed, next to the options it refers to", as
 test("a correction at the confirmation step goes back to the agent instead of building", async () => {
 	const { agent, prompts } = scriptedAgent([plan, plan]);
 	const io = scriptedIo([], ["Use cursor pagination, not pages", ""]);
-	const result = await runGrill({ spec: "# Board", target: newTarget, agent, io });
+	const result = await runGrill({ spec: "# Board", context, agent, io });
 	assert.equal(prompts.length, 2);
 	assert.match(prompts[1], /A1: Use cursor pagination, not pages/);
 	assert.equal(result.transcript.length, 1);
@@ -86,14 +91,14 @@ test("a reply that breaks the protocol is sent back twice, then fails", async ()
 	const ok = scriptedAgent([{ done: false }, layoutTurn, scopeTurn, plan]);
 	await runGrill({
 		spec: "# B",
-		target: newTarget,
+		context,
 		agent: ok.agent,
 		io: scriptedIo(["", ""]),
 	});
 	assert.match(ok.prompts[1], /broke the protocol/);
 	const bad = scriptedAgent([{ done: false }, { done: true, summary: "x" }, { done: false }]);
 	await assert.rejects(
-		runGrill({ spec: "# B", target: newTarget, agent: bad.agent, io: scriptedIo([]) }),
+		runGrill({ spec: "# B", context, agent: bad.agent, io: scriptedIo([]) }),
 		/broke the grill protocol/,
 	);
 });
@@ -104,39 +109,21 @@ test("a question longer than three sentences is sent back to the agent", async (
 		question:
 			"The spec wants REST. You said server functions. Both can work. Which owns GET /groups?",
 	};
-	assert.throws(() => checkTurn(wordy, profileIds), /at most 3 short sentences/);
+	assert.throws(() => checkTurn(wordy), /at most 3 short sentences/);
 	const tight = {
 		done: false,
 		question: "The spec wants REST, e.g. GET /groups. You said server functions. Which owns reads?",
 	};
-	assert.equal(checkTurn(tight, profileIds), tight);
+	assert.equal(checkTurn(tight), tight);
 	const { agent, prompts } = scriptedAgent([wordy, layoutTurn, scopeTurn, plan]);
-	await runGrill({ spec: "# B", target: newTarget, agent, io: scriptedIo(["", ""]) });
+	await runGrill({ spec: "# B", context, agent, io: scriptedIo(["", ""]) });
 	assert.match(prompts[1], /at most 3 short sentences/);
 });
 
-test("a plan can only create known project types in simple folders", () => {
-	assert.equal(checkTurn(plan, profileIds), plan);
-	const withProjects = (projects) => ({ ...plan, projects });
-	assert.throws(
-		() => checkTurn(withProjects([{ dir: ".", profile: "rails" }]), profileIds),
-		/unknown project type/,
-	);
-	assert.throws(
-		() => checkTurn(withProjects([{ dir: "../x", profile: "next" }]), profileIds),
-		/simple folder/,
-	);
-	assert.throws(
-		() =>
-			checkTurn(
-				withProjects([
-					{ dir: ".", profile: "next" },
-					{ dir: "api", profile: "hono-node" },
-				]),
-				profileIds,
-			),
-		/distinct/,
-	);
+test("a finished plan needs a summary and decisions", () => {
+	assert.equal(checkTurn(plan), plan);
+	assert.throws(() => checkTurn({ ...plan, summary: " " }), /needs a summary/);
+	assert.throws(() => checkTurn({ ...plan, decisions: [] }), /needs decisions/);
 });
 
 test("an executable agent receives the prompt on stdin", async (t) => {
@@ -149,13 +136,6 @@ test("an executable agent receives the prompt on stdin", async (t) => {
 	assert.throws(() => agentSpec("gpt"), /supports claude, omp, or a path/);
 });
 
-test("the prompt's heading names the workspace", () => {
-	assert.equal(
-		defaultDestination("# FS: Assisted Live Coding\n\nBuild a board."),
-		"fs-assisted-live-coding",
-	);
-});
-
 test("the brief records the plan, flags missing reasons, and points agents at BUILD.md", (t) => {
 	const root = fixture(t, { "AGENTS.md": "# Existing\n\nKeep me.\n" });
 	const transcript = [{ question: "One app or two?", answer: "One Next.js app" }];
@@ -166,14 +146,14 @@ test("the brief records the plan, flags missing reasons, and points agents at BU
 		plan,
 		transcript,
 		date: "2026-10-16",
-		mode: "new",
 	});
 	const doc = (name) => readFileSync(join(root, "docs/grill/board", name), "utf8");
 	assert.match(doc("DECISIONS.md"), /## Shared understanding\n\nOne Next\.js app/);
 	assert.match(doc("DECISIONS.md"), /## Framework[\s\S]*\*\*Why:\*\* one deployable/);
 	assert.match(doc("DECISIONS.md"), /## Validation[\s\S]*Not given yet/);
 	assert.match(doc("TRANSCRIPT.md"), /\*\*A:\*\* One Next\.js app/);
-	assert.match(doc("BUILD.md"), /`\.\/`: next[\s\S]*TALK-TRACK\.md/);
+	assert.match(doc("BUILD.md"), /Where the work goes[\s\S]*TALK-TRACK\.md/);
+	assert.doesNotMatch(doc("BUILD.md"), /test:mutation/);
 	assert.match(
 		readFileSync(join(root, "AGENTS.md"), "utf8"),
 		/Keep me\.[\s\S]*docs\/grill\/board\/BUILD\.md/,
@@ -181,18 +161,21 @@ test("the brief records the plan, flags missing reasons, and points agents at BU
 	assert.equal(readState(session).plan.summary, plan.summary);
 });
 
-test("extending a project never plans new ones and frames the agent with the existing code", async () => {
-	const { agent, prompts } = scriptedAgent([plan]);
-	const target = { mode: "extend", context: "Files (two levels):\nsrc/\npackage.json" };
-	const result = await runGrill({
-		spec: "Add comments to posts",
-		target,
-		agent,
-		io: scriptedIo([]),
+test("a project with mutation testing gets a mutation gate in BUILD.md", (t) => {
+	const root = fixture(t, {
+		"package.json": JSON.stringify({ scripts: { "test:mutation": "stryker run" } }),
 	});
-	assert.deepEqual(result.plan.projects, []);
-	assert.match(prompts[0], /extends the existing project[\s\S]*src\/\npackage\.json/);
-	assert.doesNotMatch(prompts[0], /Project types:/);
+	const session = grillSession(root, "Board");
+	writeBrief(session, { source: "p.md", prompt: "# Board", plan, transcript: [], date: "d" });
+	const build = readFileSync(join(root, "docs/grill/board/BUILD.md"), "utf8");
+	assert.match(build, /run `test:mutation`[\s\S]*never lower the threshold/);
+});
+
+test("the grilling agent sees the existing project and is never offered project types", async () => {
+	const { agent, prompts } = scriptedAgent([plan]);
+	await runGrill({ spec: "Add comments to posts", context, agent, io: scriptedIo([]) });
+	assert.match(prompts[0], /existing project summarized below[\s\S]*src\/\npackage\.json/);
+	assert.doesNotMatch(prompts[0], /Project types:|"projects"/);
 });
 
 function invoke(root, args) {
@@ -203,35 +186,31 @@ function invoke(root, args) {
 	});
 }
 
-test("a saved plan with --dry-run shows what would be created and writes nothing", (t) => {
+test("grill refuses a missing or empty folder and names create and adopt", (t) => {
 	const root = fixture(t, {
 		"prompt.md": "# Tiny Board\n",
-		"plan.json": JSON.stringify({
-			plan: {
-				...plan,
-				projects: [
-					{ dir: "web", profile: "react-vite" },
-					{ dir: "api", profile: "hono-node" },
-				],
-			},
-		}),
+		"plan.json": JSON.stringify({ plan }),
 	});
-	const result = invoke(root, ["prompt.md", "board", "--plan", "plan.json", "--dry-run"]);
-	assert.equal(result.status, 0, result.stderr);
-	assert.match(result.stdout, /engineering create react-vite .*board\/web/);
-	assert.match(result.stdout, /engineering create hono-node .*board\/api/);
-	assert.deepEqual(readdirSync(root).sort(), ["plan.json", "prompt.md"]);
+	mkdirSync(join(root, "empty"));
+	for (const folder of ["board", "empty"]) {
+		const result = invoke(root, ["prompt.md", folder, "--plan", "plan.json"]);
+		assert.equal(result.status, 1);
+		assert.match(result.stderr, new RegExp(`engineering create <profile> ${folder}`));
+		assert.match(result.stderr, new RegExp(`engineering adopt ${folder} --profile`));
+	}
+	assert.equal(existsSync(join(root, "board")), false);
+	assert.deepEqual(readdirSync(join(root, "empty")), []);
 });
 
-test("a saved plan naming an unknown project type is refused", (t) => {
-	const root = fixture(t, { "prompt.md": "# Board\n" });
-	writeFileSync(
-		join(root, "plan.json"),
-		JSON.stringify({ plan: { ...plan, projects: [{ dir: ".", profile: "rails" }] } }),
-	);
-	const result = invoke(root, ["prompt.md", "--plan", "plan.json", "--dry-run"]);
-	assert.equal(result.status, 1);
-	assert.match(result.stderr, /isn't a usable grill plan: unknown project type rails/);
+test("a saved plan with --dry-run says where the brief would go and writes nothing", (t) => {
+	const root = fixture(t, {
+		"app/package.json": '{"name":"app"}',
+		"plan.json": JSON.stringify({ spec: "Add comments", plan }),
+	});
+	const result = invoke(root, ["app", "--plan", "plan.json", "--dry-run"]);
+	assert.equal(result.status, 0, result.stderr);
+	assert.match(result.stdout, /Would write the brief to .*app\/docs\/grill\/add-comments/);
+	assert.deepEqual(readdirSync(join(root, "app")), ["package.json"]);
 });
 
 test("without a terminal, grill refuses to start a conversation or ask for a topic", (t) => {
@@ -243,7 +222,7 @@ test("without a terminal, grill refuses to start a conversation or ask for a top
 	}
 });
 
-test("a folder with files is extended: nothing is created and the brief goes in docs/grill", (t) => {
+test("grill writes only the brief into the project: no AGENTS.md, no other files", (t) => {
 	const root = fixture(t, {
 		"app/package.json": '{"name":"app"}',
 		"plan.json": JSON.stringify({ spec: "Add comments to posts", plan, tickets }),
@@ -252,7 +231,7 @@ test("a folder with files is extended: nothing is created and the brief goes in 
 	assert.equal(result.status, 0, result.stderr);
 	assert.deepEqual(readdirSync(join(root, "app")).sort(), [".engineering", "docs", "package.json"]);
 	const build = readFileSync(join(root, "app/docs/grill/add-comments-to-posts/BUILD.md"), "utf8");
-	assert.match(build, /extends the existing project/);
+	assert.match(build, /Where the work goes/);
 	assert.match(
 		readFileSync(join(root, "app/docs/grill/add-comments-to-posts/TICKETS.md"), "utf8"),
 		/Talk track/,
@@ -265,7 +244,6 @@ const tickets = [
 		title: "Store and API",
 		description: "groups",
 		acceptance: "tests pass",
-		project: ".",
 		depends_on: [],
 	},
 	{
@@ -273,20 +251,22 @@ const tickets = [
 		title: "Talk track",
 		description: "write it",
 		acceptance: "file exists",
-		project: ".",
 		depends_on: ["t1"],
 	},
 ];
 
-test("tickets must name planned projects and depend only on earlier tickets", () => {
-	assert.equal(checkTickets({ tickets }, plan), tickets);
+test("tickets depend only on earlier tickets and have unique keys", () => {
+	assert.equal(checkTickets({ tickets }), tickets);
 	const swap = (change) => ({ tickets: [tickets[0], { ...tickets[1], ...change }] });
-	assert.throws(() => checkTickets(swap({ project: "api" }), plan), /unknown project api/);
 	assert.throws(
-		() => checkTickets(swap({ depends_on: ["t9"] }), plan),
+		() => checkTickets(swap({ depends_on: ["t9"] })),
 		/depends on t9, which isn't earlier/,
 	);
-	assert.throws(() => checkTickets(swap({ key: "t1" }), plan), /unique/);
+	assert.throws(() => checkTickets(swap({ key: "t1" })), /unique/);
+	assert.throws(
+		() => checkTickets(swap({ acceptance: " " })),
+		/needs a title, description and acceptance/,
+	);
 });
 
 test("beads are created in order and wired to the beads they depend on", () => {

@@ -61,27 +61,28 @@ engineering plan workers-ai ./MyChat --name "My Chat"
 ## Get grilled before you build
 
 ```bash
+engineering create next ./board --manager bun     # grill works inside a project, so make one first
+engineering grill ./prompt.md ./board              # grill on a prompt file, then ticket and build it
+engineering grill ./take-home.pdf . --model sonnet
 engineering grill                                  # asks what to grill you about; works on the current project
-engineering grill ./prompt.md                      # new project, named from the prompt's heading
-engineering grill ./take-home.pdf board --model sonnet --manager bun
-engineering grill ~/Dev/my-app                     # extend an existing project
 engineering grill . --plan /tmp/grill-plan.json    # use a plan an agent already grilled out of you
 ```
 
 `grill` is for work you'll have to explain afterward: a take-home, a live-coding prompt, or the next feature in an existing project. Without a prompt file it asks what to grill you about. An agent (OMP by default, or Claude Code with `--agent claude`) then interviews you one question at a time, since each answer changes what's worth asking next. It only asks about decisions that change what gets built or that a reviewer would challenge; it settles small details itself and lists them in the plan. A question is at most three sentences, written by the humanizer skill's rules, with options where they help and the agent's recommended answer. Press Enter to take the recommendation, type an option's number, or answer in your own words; your answer goes to the agent as typed. Say you've had enough and it plans with its recommendations for the rest. It pushes back on vague or risky answers.
 
-A missing or empty directory gets new projects. Any other directory is extended: the agent sees a summary of its files, package.json, README and AGENTS.md, and plans no new projects.
+`grill` never creates a project. The directory (the current one by default) must already hold one, from `engineering create` or `engineering adopt`; a missing or empty folder stops with those commands. The agent sees a summary of the project's files, package.json, README and AGENTS.md, and fits its questions to what's there.
 
 When nothing is left open, it shows the shared understanding. Press Enter to accept it, or type what's wrong and the grilling continues. Then `grill`:
 
-1. Creates the new projects with `engineering create`, if any.
-2. Writes `docs/grill/<topic>/`: SPEC, DECISIONS (each decision with its alternatives and your reason; missing reasons are flagged), TRANSCRIPT, and BUILD (instructions for the build agent).
-3. Has the agent break the plan into vertical-slice tickets in dependency order (TICKETS.md), and creates them as beads with their dependencies. A folder without Beads gets one.
-4. Starts the build agent in your terminal, told to work `bd ready` one ticket at a time, test first, and finish with a TALK-TRACK.md you can walk through. `--no-build` stops before this.
+1. Writes `docs/grill/<topic>/`: SPEC, DECISIONS (each decision with its alternatives and your reason; missing reasons are flagged), TRANSCRIPT, and BUILD (instructions for the build agent). An existing AGENTS.md gets a pointer to BUILD.md.
+2. Has the agent break the plan into vertical-slice tickets in dependency order (TICKETS.md), each naming the files it owns so ready tickets can be built in parallel, and creates them as beads with their dependencies. A folder without Beads gets one; `--no-beads` keeps just TICKETS.md.
+3. Starts the build agent in your terminal as an orchestrator: it hands ready tickets to parallel subagents, runs the project's checks after each batch, closes beads only when their acceptance passes, and keeps going until every bead is closed, finishing with a TALK-TRACK.md you can walk through. `--no-build` stops before this.
+
+When the project has a `test:mutation` script (create and adopt set one up), BUILD.md and the tickets require it to pass its threshold before the build is done.
 
 Each step is saved in `.engineering/grill/<topic>.json`, so rerunning with the same prompt or topic resumes where it stopped. `--plan FILE` skips the grilling; the `engineering-grill` agent skill uses it after grilling you in chat.
 
-This is the one command that calls a model, through the agent CLI you already use; the rest of "engineering" stays model-free. The agent can only plan project types `engineering` knows, in plain folders. Create options such as `--manager bun`, `--no-beads` and `--baseline --reason "..."` pass through to new projects.
+This is the one command that calls a model, through the agent CLI you already use; the rest of "engineering" stays model-free.
 
 
 ## Skills that fit the project
@@ -152,7 +153,7 @@ Creation and adoption add [StrykerJS](https://stryker-mutator.io/docs/stryker-js
 npm run test:mutation   # use the project's package manager
 ```
 
-Stryker changes production code in a temporary sandbox and checks whether your tests catch it. The generated configuration fails scores below **80**, writes local HTML/JSON reports under `reports/mutation/`, and excludes tests, declarations, configuration, and known generated/vendor output from mutation. Review the scope for your app. Mutation testing runs separately from setup, ordinary checks, and generated CI; add the script to CI when you want the slower gate.
+Stryker changes production code in a temporary sandbox and checks whether your tests catch it. The generated configuration fails scores below **80**, writes local HTML/JSON reports under `reports/mutation/`, excludes tests, declarations, configuration, and known generated/vendor output from mutation, and keeps agent and tooling folders out of the sandbox. Review the scope for your app. Mutation testing runs separately from setup, ordinary checks, and generated CI; add the script to CI when you want the slower gate.
 
 Plain Vitest uses its native Stryker runner. Other recognized host unit-test commands use the command adapter, which reruns the full suite per mutant and cannot count tests. Unknown commands, E2E-only projects, and Cloudflare's isolated Worker test pools aren't automatically configured. Runtime-independent Worker unit tests remain eligible. Empty suites or reports without valid mutants are not evidence of test quality.
 

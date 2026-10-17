@@ -33,27 +33,17 @@ export function transcriptFile(transcript) {
 	return `# Grill transcript\n\nEvery question asked and every answer given, in order.\n\n${turns.join("\n\n")}\n`;
 }
 
-const projectLine = ({ dir, profile }) =>
-	`- \`${dir === "." ? "./" : `${dir}/`}\`: ${profile}, created by \`engineering create\``;
+const MUTATION_STEP = `\n6. Before calling the build done, run \`test:mutation\`. It must pass the break threshold in \`stryker.config.json\`. Kill surviving mutants with tests that assert behavior; never lower the threshold or narrow the mutation scope to pass.`;
 
-function projectsSection(plan) {
-	if (!plan.projects.length)
-		return `## Where the work goes
-
-This extends the existing project at the repository root (paths below are relative to it). Follow its conventions, scripts and tests. Run its check and test scripts, and \`engineering check\` if it uses "engineering", before calling a slice done.`;
-	return `## Projects
-
-${plan.projects.map(projectLine).join("\n")}
-
-Each project already has its quality checks, skills and CI. Run \`npm run check\` (or the project's check script) and \`engineering check\` in each one before calling a slice done. Upgrade the starter to the versions DECISIONS.md names when they differ.`;
-}
-
-export function buildFile(plan) {
+/** `mutation` is true when the project has a test:mutation script. */
+export function buildFile({ mutation = false } = {}) {
 	return `# Build brief
 
 This folder holds one grilled piece of work. Read SPEC.md and DECISIONS.md first, and TRANSCRIPT.md when a decision needs context. DECISIONS.md is binding: if a decision turns out not to work, stop and say why instead of quietly choosing something else.
 
-${projectsSection(plan)}
+## Where the work goes
+
+The project at the repository root (paths below are relative to it). Follow its conventions, scripts and tests. Run its check and test scripts, and \`engineering check\` if it uses "engineering", before calling a slice done.
 
 ## How to build
 
@@ -61,7 +51,7 @@ ${projectsSection(plan)}
 2. Work the tickets in TICKETS.md in dependency order, one vertical slice at a time, test first. When the workspace has Beads, they're also beads: run \`bd ready --json\`, claim one with \`bd update <id> --claim\`, and close it with \`bd close <id> --reason "..."\` only after its acceptance passes.
 3. Keep each module small enough to explain in a sentence. Name things in the spec's vocabulary.
 4. Cover the spec's stated edge cases explicitly (status codes, empty, loading and error states, invalid input) with tests a reviewer can read as a specification.
-5. Keep the README's install, run and test commands accurate.
+5. Keep the README's install, run and test commands accurate.${mutation ? MUTATION_STEP : ""}
 
 ## Talk track (required)
 

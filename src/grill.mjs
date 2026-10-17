@@ -1,7 +1,5 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { basename, join, relative, resolve } from "node:path";
-import { createProject } from "./create.mjs";
+import { join, relative, resolve } from "node:path";
 import { agentSpec, runAgent } from "./grill/agent.mjs";
 import {
 	agentsPointer,
@@ -19,56 +17,38 @@ import {
 	saveState,
 } from "./grill/followthrough.mjs";
 import {
-	defaultDestination,
-	plannableProfiles,
+	hasMutationScript,
 	promptTitle,
 	readPrompt,
+	requireProject,
 	resolveTargets,
 	savedPlan,
-	workspaceMode,
 } from "./grill/inputs.mjs";
 import { kickoff } from "./grill/kickoff.mjs";
 import { runGrill, terminalIo } from "./grill/session.mjs";
 import { writingRules } from "./grill/style.mjs";
 import { ticketsFile } from "./grill/tickets.mjs";
 
-export { defaultDestination, plannableProfiles };
+/** Appends the brief pointer to the project's AGENTS.md, if it has one; never creates the file. */
+function pointAgentsAtBrief(session) {
+	const agents = join(session.workspace, "AGENTS.md");
+	if (!existsSync(agents)) return;
+	const existing = readFileSync(agents, "utf8");
+	if (existing.includes("## Grill brief")) return;
+	const docs = relative(session.workspace, session.docs);
+	writeFileSync(agents, `${existing.trimEnd()}\n\n${agentsPointer(docs)}`);
+}
 
-/** Generator flags that answer upstream prompts, so creation runs unattended after the grilling. */
-const UNATTENDED = {
-	"hono-node": (manager) => ["--install", "--pm", manager ?? "npm"],
-};
-
-export function writeBrief(session, { source, prompt, plan, transcript, tickets, date, mode }) {
+export function writeBrief(session, { source, prompt, plan, transcript, tickets, date }) {
 	mkdirSync(session.docs, { recursive: true });
 	writeFileSync(join(session.docs, "SPEC.md"), specFile(source, prompt));
 	writeFileSync(join(session.docs, "DECISIONS.md"), decisionsFile(plan, date));
 	writeFileSync(join(session.docs, "TRANSCRIPT.md"), transcriptFile(transcript));
-	writeFileSync(join(session.docs, "BUILD.md"), buildFile(plan));
+	const mutation = hasMutationScript(session.workspace);
+	writeFileSync(join(session.docs, "BUILD.md"), buildFile({ mutation }));
 	if (tickets) writeFileSync(join(session.docs, "TICKETS.md"), ticketsFile(tickets));
-	if (mode === "new") {
-		const agents = join(session.workspace, "AGENTS.md");
-		const existing = existsSync(agents) ? readFileSync(agents, "utf8") : "# Agent instructions\n";
-		const docs = relative(session.workspace, session.docs);
-		if (!existing.includes("## Grill brief"))
-			writeFileSync(agents, `${existing.trimEnd()}\n\n${agentsPointer(docs)}`);
-	}
+	pointAgentsAtBrief(session);
 	saveState(session, { plan, transcript, ...(tickets && { tickets }) });
-}
-
-async function createProjects(workspace, plan, options) {
-	const backup = join(tmpdir(), `engineering-grill-${basename(workspace)}.json`);
-	writeFileSync(backup, JSON.stringify({ plan }, null, 2));
-	try {
-		mkdirSync(workspace, { recursive: true });
-		for (const { dir, profile } of plan.projects) {
-			const forwarded = UNATTENDED[profile]?.(options.manager) ?? [];
-			await createProject([profile, join(workspace, dir)], { ...options, forwarded });
-		}
-	} catch (error) {
-		console.error(`Your grill plan is saved; retry with --plan ${backup}`);
-		throw error;
-	}
 }
 
 function thinkingAgent(options) {
@@ -108,48 +88,34 @@ async function promptText(promptPath, options, term) {
 	return saved?.spec ?? askTopic(term.get());
 }
 
-/** The prompt text and where the work lives. */
+/** The prompt text and the existing project the work goes into. */
 async function resolveWork(targets, options, term) {
 	const { promptPath, directory } = resolveTargets(targets, { plan: options.plan });
+	const workspace = resolve(directory ?? ".");
+	requireProject(workspace);
 	const prompt = await promptText(promptPath, options, term);
-	const workspace = resolve(directory ?? (promptPath ? defaultDestination(prompt) : "."));
 	const session = grillSession(workspace, promptPath ? promptTitle(prompt) : prompt);
 	const source = promptPath ?? "what you asked for";
-	return { prompt, source, workspace, mode: workspaceMode(workspace), session };
+	return { prompt, source, workspace, session };
 }
 
-function target(work) {
-	return work.mode === "extend"
-		? { mode: "extend", context: projectContext(work.workspace) }
-		: { mode: "new", profiles: plannableProfiles() };
-}
-
-/** Grill (or load a saved plan), create any new projects and write the brief. Null for a dry run. */
+/** Grill (or load a saved plan) and write the brief. Null for a dry run. */
 async function plan(work, options, term) {
 	const result = options.plan
-		? savedPlan(options.plan, work.mode)
+		? savedPlan(options.plan)
 		: await runGrill({
 				spec: work.prompt,
-				target: target(work),
+				context: projectContext(work.workspace),
 				style: writingRules(work.workspace, options.skillsDirs),
 				agent: thinkingAgent(options),
 				io: term.get(),
 			});
 	if (options.dryRun) {
-		for (const { dir, profile } of result.plan.projects)
-			console.log(`Would run: engineering create ${profile} ${join(work.workspace, dir)}`);
 		console.log(`Would write the brief to ${work.session.docs}`);
 		return null;
 	}
-	if (work.mode === "new") await createProjects(work.workspace, result.plan, options);
 	const date = new Date().toISOString().slice(0, 10);
-	writeBrief(work.session, {
-		...result,
-		source: work.source,
-		prompt: work.prompt,
-		date,
-		mode: work.mode,
-	});
+	writeBrief(work.session, { ...result, source: work.source, prompt: work.prompt, date });
 	return readState(work.session);
 }
 

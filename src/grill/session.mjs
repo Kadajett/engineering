@@ -30,24 +30,23 @@ export async function agentJson(agent, promptFor, check) {
 	}
 }
 
-const takeTurn = (agent, context, profileIds) =>
+const takeTurn = (agent, context) =>
 	agentJson(
 		agent,
 		(note) => turnPrompt({ ...context, note }),
-		(reply) => checkTurn(reply, profileIds),
+		(reply) => checkTurn(reply),
 	);
 
 /**
- * Grill until the agent returns a plan the builder confirms, one question per turn. `target` is
- * { mode: "new", profiles } or { mode: "extend", context }. `agent(prompt)` returns the agent's raw
- * reply; `io` shows each question and collects the answer. Corrections at the confirmation step go
- * back to the agent as another turn. The transcript is a flat list of { question, answer }.
+ * Grill until the agent returns a plan the builder confirms, one question per turn. `context`
+ * summarizes the existing project. `agent(prompt)` returns the agent's raw reply; `io` shows each
+ * question and collects the answer. Corrections at the confirmation step go back to the agent as
+ * another turn. The transcript is a flat list of { question, answer }.
  */
-export async function runGrill({ spec, target, style, agent, io }) {
-	const profileIds = target.mode === "extend" ? null : target.profiles.map((profile) => profile.id);
+export async function runGrill({ spec, context, style, agent, io }) {
 	const transcript = [];
 	for (;;) {
-		const turn = await takeTurn(agent, { spec, target, style, transcript }, profileIds);
+		const turn = await takeTurn(agent, { spec, context, style, transcript });
 		if (!turn.done) {
 			io.showQuestion(turn, transcript.length + 1);
 			transcript.push({ question: questionText(turn), answer: String(await io.ask()) });
@@ -68,11 +67,8 @@ export function formatQuestion(turn, number) {
 }
 
 export function formatPlan(plan) {
-	const projects = plan.projects.length
-		? `Projects to create:\n${plan.projects.map(({ dir, profile }) => `  ${dir}: ${profile}`).join("\n")}\n\n`
-		: "";
 	const decisions = plan.decisions.map((decision) => `  - ${decision.title}: ${decision.chosen}`);
-	return `\nShared understanding\n\n${plan.summary}\n\n${projects}Decisions:\n${decisions.join("\n")}\n\n`;
+	return `\nShared understanding\n\n${plan.summary}\n\nDecisions:\n${decisions.join("\n")}\n\n`;
 }
 
 /** A terminal io for runGrill; call close() when done. */

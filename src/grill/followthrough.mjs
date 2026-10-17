@@ -7,6 +7,7 @@ import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, join } from "node:path";
 import { projectSlug } from "../generation-names.mjs";
+import { hasMutationScript } from "./inputs.mjs";
 import { agentJson } from "./session.mjs";
 import { checkTickets, createBeads, ticketPrompt, ticketsFile } from "./tickets.mjs";
 
@@ -45,10 +46,18 @@ function writeTickets(session, tickets, ids) {
 /** Ask the agent for tickets once (a saved plan may already carry them). */
 export async function ensureTickets(session, prompt, state, agent) {
 	if (state.tickets) return state;
+	const mutation = hasMutationScript(session.workspace);
 	const tickets = await agentJson(
 		agent,
-		(note) => ticketPrompt({ spec: prompt, plan: state.plan, transcript: state.transcript, note }),
-		(reply) => checkTickets(reply, state.plan),
+		(note) =>
+			ticketPrompt({
+				spec: prompt,
+				plan: state.plan,
+				transcript: state.transcript,
+				mutation,
+				note,
+			}),
+		(reply) => checkTickets(reply),
 	);
 	const next = { ...state, tickets };
 	writeTickets(session, tickets);

@@ -15,8 +15,8 @@ function validateSetupOptions(options, command) {
 		throw new Error("Skill options are supported only for create, adopt, plan, skills and grill");
 	if (options.skillsDirs.some((path) => !path.trim()))
 		throw new Error("--skills-dir requires a nonempty directory");
-	if (options.mutation === false && !["create", "adopt", "plan", "grill"].includes(command))
-		throw new Error("--no-mutation is supported only for create, adopt, plan and grill");
+	if (options.mutation === false && !["create", "adopt", "plan"].includes(command))
+		throw new Error("--no-mutation is supported only for create, adopt and plan");
 }
 
 function validateRecommendationOptions(options, command) {
@@ -118,7 +118,7 @@ Commands:
   plan [profile] [name]                      Preview creation without making changes
   skills [directory]                        Set up or restore the project's skills
   recommend [directory]                     Suggest optional skills without installing
-  grill [prompt] [directory]                Get grilled on new work or a change, then ticket and build it
+  grill [prompt] [directory]                Get grilled on work for an existing project, then ticket and build it
   check [directory]                         Check the code without changing it
   baseline [directory] --accept --reason X   Remember approved existing issues
   prune [directory]                         Remove allowances for issues you've fixed
@@ -148,11 +148,12 @@ Grill options:
   --agent omp|claude|PATH  Agent that grills and builds (default omp)
   --model MODEL          Model for that agent
   --plan FILE            Skip the grilling and use a saved plan ({ spec, plan, transcript?, tickets? })
-  --dry-run              Grill, then show what would be created without creating it
+  --dry-run              Grill, then show where the brief would go without writing it
   --no-build             Stop after the tickets instead of starting the build agent
-  With no prompt file, grill asks what to grill you about. An empty or missing directory gets new
-  projects; an existing one is extended. Rerun with the same prompt or topic to resume.
-  Create options like --manager, --no-beads and --baseline pass through to new projects.
+  --no-beads             Write TICKETS.md only; don't create beads
+  The directory (default: current) must already hold a project; grill never creates one. Make it
+  first with create or adopt. With no prompt file, grill asks what to grill you about. Rerun with
+  the same prompt or topic to resume.
 
 Start: engineering create
 Or:    engineering create react-vite MyApp

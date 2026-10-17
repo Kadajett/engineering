@@ -4,22 +4,20 @@
 
 const nonEmpty = (value) => typeof value === "string" && value.trim().length > 0;
 
-export function ticketPrompt({ spec, plan, transcript, note }) {
+const MUTATION_GATE =
+	"\n\nThe project runs mutation testing with its test:mutation script. The ticket just before TALK-TRACK.md must include in its acceptance that test:mutation passes the break threshold in stryker.config.json, with surviving mutants killed by stronger tests rather than a lower threshold.";
+
+/** `mutation` is true when the project has a test:mutation script. */
+export function ticketPrompt({ spec, plan, transcript, mutation, note }) {
 	const decisions = plan.decisions.map((decision) => `- ${decision.title}: ${decision.chosen}`);
-	const dirs = plan.projects.length
-		? plan.projects.map(({ dir, profile }) => `- "${dir}": ${profile}`).join("\n")
-		: '- ".": the existing project this work extends';
 	const history = transcript
 		.flat()
 		.map(({ question, answer }) => `Q: ${question}\nA: ${answer}`)
 		.join("\n");
-	return `Break this agreed build into tickets for an agent that builds test first in vertical slices. Each ticket is one behavior a reviewer can see working, small enough for one focused session, with acceptance criteria that are observable (tests that pass, a request that returns a status, a UI state). Order them so each depends only on earlier ones: scaffolding and the domain model first, then each core flow end to end, then the spec's edge cases and stretch items, and last a ticket to write TALK-TRACK.md as BUILD.md describes. Follow the decisions exactly; don't add scope.
+	return `Break this agreed build into tickets for an agent that builds test first in vertical slices. Each ticket is one behavior a reviewer can see working, small enough for one focused session, with acceptance criteria that are observable (tests that pass, a request that returns a status, a UI state). Order them so each depends only on earlier ones: scaffolding and the domain model first, then each core flow end to end, then the spec's edge cases and stretch items, and last a ticket to write TALK-TRACK.md as BUILD.md describes. Several agents may build ready tickets at once, so depend only on the tickets each one truly needs and name the files each ticket owns in its description. Follow the decisions exactly; don't add scope.${mutation ? MUTATION_GATE : ""}
 
 Reply with exactly one JSON object and nothing else:
-{"tickets": [{"key": "t1", "title": "short imperative title", "description": "what to build and which decisions apply", "acceptance": "observable checks", "project": "<project dir>", "depends_on": ["earlier keys"]}]}
-
-Projects:
-${dirs}
+{"tickets": [{"key": "t1", "title": "short imperative title", "description": "what to build, which decisions apply, and the files it owns", "acceptance": "observable checks", "depends_on": ["earlier keys"]}]}
 
 Summary: ${plan.summary}
 
@@ -42,25 +40,22 @@ function checkDependencies(ticket, earlier) {
 		throw new Error(`ticket ${ticket.key} depends on ${missing}, which isn't earlier`);
 }
 
-function checkTicket(ticket, earlier, dirs) {
+function checkTicket(ticket, earlier) {
 	if (!/^[a-z0-9-]+$/i.test(ticket?.key ?? "") || earlier.has(ticket.key))
 		throw new Error(`ticket keys must be unique simple ids, got ${ticket?.key}`);
 	if (![ticket.title, ticket.description, ticket.acceptance].every(nonEmpty))
 		throw new Error(`ticket ${ticket.key} needs a title, description and acceptance`);
-	if (!dirs.includes(ticket.project))
-		throw new Error(`ticket ${ticket.key} names unknown project ${ticket.project}`);
 	checkDependencies(ticket, earlier);
 }
 
 /** Tickets must be ordered so every dependency comes first; that also rules out cycles. */
-export function checkTickets(reply, plan) {
+export function checkTickets(reply) {
 	const tickets = reply?.tickets;
 	if (!Array.isArray(tickets) || tickets.length < 2 || tickets.length > 30)
 		throw new Error("the build needs 2 to 30 tickets");
-	const dirs = plan.projects.length ? plan.projects.map(({ dir }) => dir) : ["."];
 	const earlier = new Set();
 	for (const ticket of tickets) {
-		checkTicket(ticket, earlier, dirs);
+		checkTicket(ticket, earlier);
 		earlier.add(ticket.key);
 	}
 	return tickets;
@@ -70,7 +65,7 @@ export function ticketsFile(tickets, ids = {}) {
 	const sections = tickets.map((ticket, index) => {
 		const id = ids[ticket.key] ? ` (${ids[ticket.key]})` : "";
 		const after = ticket.depends_on?.length ? `\n\nAfter: ${ticket.depends_on.join(", ")}` : "";
-		return `## ${index + 1}. ${ticket.title}${id}\n\nProject: \`${ticket.project}\`${after}\n\n${ticket.description.trim()}\n\n**Acceptance:** ${ticket.acceptance.trim()}`;
+		return `## ${index + 1}. ${ticket.title}${id}${after}\n\n${ticket.description.trim()}\n\n**Acceptance:** ${ticket.acceptance.trim()}`;
 	});
 	return `# Tickets\n\nWork these in order. When the workspace has Beads, the same tickets are beads: use bd ready, claim, and close.\n\n${sections.join("\n\n")}\n`;
 }
@@ -87,7 +82,7 @@ export function createBeads(tickets, bd) {
 			"--title",
 			ticket.title,
 			"--description",
-			`${ticket.description}\n\nProject: ${ticket.project}`,
+			ticket.description,
 			"--acceptance",
 			ticket.acceptance,
 			"--type",

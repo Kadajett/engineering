@@ -1,19 +1,28 @@
 // What `engineering grill` works from: an optional prompt file, an optional directory, and an optional
-// saved plan. Without a prompt file it asks what to grill about; without a directory it works in the
-// prompt's own new folder (prompt file) or the current directory (asked topic).
+// saved plan. Without a prompt file it asks what to grill about. The directory defaults to the current
+// one and must already hold a project: grill plans work, it never creates projects.
 import { spawnSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
-import { extname } from "node:path";
-import { projectSlug } from "../generation-names.mjs";
-import { profiles } from "../profiles.mjs";
+import { extname, join, relative } from "node:path";
 import { checkTickets } from "./tickets.mjs";
 import { checkTurn } from "./turn.mjs";
 
-export const plannableProfiles = () => profiles.filter((profile) => profile.generator);
+/** Throws with the commands that make a project when `dir` is missing or empty. */
+export function requireProject(dir) {
+	if (existsSync(dir) && statSync(dir).isDirectory() && readdirSync(dir).length) return;
+	const shown = relative(process.cwd(), dir) || ".";
+	throw new Error(`${shown} has no project yet. grill plans work inside an existing project; it doesn't create one.
+Create one:      engineering create <profile> ${shown}   (engineering list shows the profiles)
+Or bring one in: engineering adopt ${shown} --profile <profile>
+Then run grill again.`);
+}
 
-/** A missing or empty directory gets new projects; anything else is an existing project to extend. */
-export const workspaceMode = (dir) =>
-	!existsSync(dir) || !readdirSync(dir).length ? "new" : "extend";
+/** True when the project's package.json has a test:mutation script (set up by create or adopt). */
+export function hasMutationScript(dir) {
+	const path = join(dir, "package.json");
+	if (!existsSync(path)) return false;
+	return typeof JSON.parse(readFileSync(path, "utf8")).scripts?.["test:mutation"] === "string";
+}
 
 /** A lone existing file is the prompt; otherwise, with a saved plan (which carries the spec), it's the directory. */
 export function resolveTargets(targets, { plan } = {}) {
@@ -42,27 +51,16 @@ export function readPrompt(path) {
 export const promptTitle = (prompt) =>
 	(/^#+\s+(.+)$/m.exec(prompt)?.[1] ?? prompt.trim().split("\n")[0]).trim();
 
-export function defaultDestination(prompt) {
-	const slug = projectSlug(
-		promptTitle(prompt)
-			.replace(/[^\p{L}\p{N}\s-]/gu, " ")
-			.trim(),
-	);
-	if (!slug) throw new Error("Couldn't name the project from the prompt; pass a directory");
-	return slug;
-}
-
 /**
  * A plan saved by an earlier session, or written by an agent that grilled in chat:
- * { "spec"?, "plan", "transcript"?, "tickets"? }. A plan for an existing project has no projects.
+ * { "spec"?, "plan", "transcript"?, "tickets"? }.
  */
-export function savedPlan(path, mode) {
+export function savedPlan(path) {
 	const saved = JSON.parse(readFileSync(path, "utf8"));
 	try {
-		const ids = mode === "extend" ? null : plannableProfiles().map((profile) => profile.id);
-		const plan = checkTurn({ ...saved.plan, done: true }, ids);
+		const plan = checkTurn({ ...saved.plan, done: true });
 		const tickets =
-			saved.tickets === undefined ? undefined : checkTickets({ tickets: saved.tickets }, plan);
+			saved.tickets === undefined ? undefined : checkTickets({ tickets: saved.tickets });
 		const transcript = Array.isArray(saved.transcript) ? saved.transcript : [];
 		return { spec: saved.spec, plan, transcript, ...(tickets && { tickets }) };
 	} catch (error) {
